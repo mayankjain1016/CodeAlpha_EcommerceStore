@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ApexStore | India's Online Marketplace for Electronics, Fashion, Home & Sports</title>
+  <meta name="description" content="Shop millions of products at ApexStore. Genuine electronics, trending fashion, home appliances & sports gear with Cash on Delivery and free delivery.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%232874f0%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><circle cx=%229%22 cy=%2221%22 r=%221%22/><circle cx=%2220%22 cy=%2221%22 r=%221%22/><path d=%22M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6%22/></svg>">
+</head>
+<body>
+  <!-- Global Header (Top Utility Bar, Main Header, Category Strip) -->
+  <header id="main-header" class="site-header"></header>
+
+  <main class="main-content">
+    <div class="container">
+      
+      <!-- 1. Hero Banner Carousel -->
+      <section class="hero-carousel-section" id="hero-carousel" aria-label="Featured Promotions">
+        <div class="carousel-viewport">
+          <div class="carousel-track" id="carousel-track">
+            <!-- Slide 1 -->
+            <div class="carousel-slide">
+              <img src="images/banners/banner1.jpg" alt="Mega Tech & Electronics Sale" />
+              <div class="carousel-caption">
+                <h2>Electronics Super Saver Fest</h2>
+                <p>Noise-Cancelling Headphones, Smartwatches & Workstation Displays up to 50% Off</p>
+              </div>
+            </div>
+            <!-- Slide 2 -->
+            <div class="carousel-slide">
+              <img src="images/banners/banner2.jpg" alt="Fashion Trends & Apparel" />
+              <div class="carousel-caption">
+                <h2>Timeless Everyday Fashion</h2>
+                <p>Authentic Denim Jackets, Leather Sneakers & Classic Polos from Top Brands</p>
+              </div>
+            </div>
+            <!-- Slide 3 -->
+            <div class="carousel-slide">
+              <img src="images/banners/banner3.jpg" alt="Home Decor & Sports Equipment" />
+              <div class="carousel-caption">
+                <h2>Home Comfort & Active Fitness</h2>
+                <p>Induction Cookware, Memory Foam Pillows & Pro Workout Gear</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Carousel Controls -->
+          <button class="carousel-arrow prev" id="carousel-prev" aria-label="Previous Slide">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button class="carousel-arrow next" id="carousel-next" aria-label="Next Slide">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+
+          <!-- Dots Indicator -->
+          <div class="carousel-dots" id="carousel-dots"></div>
+        </div>
+      </section>
+
+      <!-- 2. Category Visual Tiles -->
+      <section class="category-tiles-row" aria-label="Popular Categories">
+        <a href="index.html?category=Electronics" class="category-tile-card">
+          <img src="images/categories/electronics.jpg" alt="Electronics" class="category-tile-img" loading="lazy" />
+          <div>
+            <div class="category-tile-title">Electronics</div>
+            <div class="category-tile-sub">Up to 40% Off</div>
+          </div>
+        </a>
+        <a href="index.html?category=Fashion" class="category-tile-card">
+          <img src="images/categories/fashion.jpg" alt="Fashion" class="category-tile-img" loading="lazy" />
+          <div>
+            <div class="category-tile-title">Fashion & Apparel</div>
+            <div class="category-tile-sub">Min 50% Off</div>
+          </div>
+        </a>
+        <a href="index.html?category=Home" class="category-tile-card">
+          <img src="images/categories/home.jpg" alt="Home & Kitchen" class="category-tile-img" loading="lazy" />
+          <div>
+            <div class="category-tile-title">Home & Kitchen</div>
+            <div class="category-tile-sub">From ₹899</div>
+          </div>
+        </a>
+        <a href="index.html?category=Sports" class="category-tile-card">
+          <img src="images/categories/sports.jpg" alt="Sports & Fitness" class="category-tile-img" loading="lazy" />
+          <div>
+            <div class="category-tile-title">Sports & Fitness</div>
+            <div class="category-tile-sub">Trending Gear</div>
+          </div>
+        </a>
+      </section>
+
+      <!-- 3. Top Deals Horizontal Strip -->
+      <section class="deals-section" aria-label="Top Deals of the Day">
+        <div class="deals-header">
+          <div class="deals-title">
+            <span>Today's Top Deals</span>
+            <span class="deals-badge">LIMITED PERIOD</span>
+          </div>
+          <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Handpicked value picks with highest discounts</span>
+        </div>
+        <div class="deals-scroll-row" id="top-deals-container">
+          <!-- Populated by index.js -->
+        </div>
+      </section>
+
+      <!-- 4. Main Marketplace Listing Layout -->
+      <div class="catalog-layout" id="catalog-listing-section">
+        
+        <!-- Left Sidebar: Filters -->
+        <aside class="filters-sidebar" id="filters-sidebar" aria-label="Product Filters">
+          <div class="filters-header">
+            <span class="filters-title">Filters</span>
+            <button class="filters-clear-btn" id="clear-filters-btn">CLEAR ALL</button>
+            <button id="close-mobile-filters" class="filters-clear-btn" style="display: none; @media(max-width:992px){display:block;}">✕</button>
+          </div>
+
+          <!-- Category Filter Group -->
+          <div class="filter-group-section">
+            <h4 class="filter-group-title">Category</h4>
+            <label class="filter-option">
+              <input type="checkbox" class="filter-category-checkbox" value="Electronics">
+              <span>Electronics</span>
+            </label>
+            <label class="filter-option">
+              <input type="checkbox" class="filter-category-checkbox" value="Fashion">
+              <span>Fashion</span>
+            </label>
+            <label class="filter-option">
+              <input type="checkbox" class="filter-category-checkbox" value="Home">
+              <span>Home & Kitchen</span>
+            </label>
+            <label class="filter-option">
+              <input type="checkbox" class="filter-category-checkbox" value="Sports">
+              <span>Sports & Fitness</span>
+            </label>
+          </div>
+
+          <!-- Price Range Filter Group -->
+          <div class="filter-group-section">
+            <h4 class="filter-group-title">Price (₹)</h4>
+            <div class="price-inputs-row">
+              <input type="number" id="filter-min-price" class="price-input" placeholder="Min" min="0">
+              <span style="color: var(--text-muted); font-size: 11px;">to</span>
+              <input type="number" id="filter-max-price" class="price-input" placeholder="Max" min="0">
+              <button id="price-filter-apply-btn" class="price-apply-btn">Go</button>
+            </div>
+          </div>
+
+          <!-- Customer Rating Filter Group -->
+          <div class="filter-group-section">
+            <h4 class="filter-group-title">Customer Ratings</h4>
+            <label class="filter-option">
+              <input type="radio" name="filter-rating" value="4">
+              <span>4★ & above</span>
+            </label>
+            <label class="filter-option">
+              <input type="radio" name="filter-rating" value="3">
+              <span>3★ & above</span>
+            </label>
+          </div>
+
+          <!-- Availability Filter Group -->
+          <div class="filter-group-section">
+            <h4 class="filter-group-title">Availability</h4>
+            <label class="filter-option">
+              <input type="checkbox" id="filter-instock-only">
+              <span>Include In-Stock Only</span>
+            </label>
+          </div>
+        </aside>
+
+        <!-- Right Content: Listing Cards & Sort Bar -->
+        <section class="catalog-content-panel">
+          <div class="catalog-top-bar">
+            <div id="results-count-display" class="results-count-text">
+              Loading products...
+            </div>
+
+            <!-- Mobile Filter Trigger -->
+            <button class="mobile-filter-trigger" id="open-mobile-filters" aria-label="Open Filters">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              <span>Filters</span>
+            </button>
+
+            <!-- Sort By Dropdown -->
+            <div class="sort-container">
+              <label for="catalog-sort-select" class="sort-label">Sort By:</label>
+              <select id="catalog-sort-select" class="sort-select" aria-label="Sort Catalog">
+                <option value="relevance">Relevance</option>
+                <option value="price-low-high">Price: Low to High</option>
+                <option value="price-high-low">Price: High to Low</option>
+                <option value="rating">Customer Rating</option>
+                <option value="newest">Newest Arrivals</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Product Grid -->
+          <div class="products-grid" id="products-grid" aria-label="Product Catalog">
+            <!-- Rendered by index.js -->
+          </div>
+
+          <!-- Pagination Bar -->
+          <div class="pagination-container" id="pagination-container">
+            <!-- Rendered by index.js -->
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Global Marketplace Footer -->
+  <footer id="main-footer" class="site-footer"></footer>
+
+  <!-- Scripts -->
+  <script src="js/common.js"></script>
+  <script src="js/index.js"></script>
+</body>
+</html>
