@@ -767,7 +767,8 @@ const sampleProducts = [
 const seedDB = async () => {
   try {
     const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/ecommerce_store';
-    console.log(`Connecting to MongoDB for seeding at: ${mongoUri}`);
+    const safeHost = mongoUri.includes('@') ? mongoUri.split('@')[1] : mongoUri.replace(/^mongodb:\/\//, '');
+    console.log(`Connecting to MongoDB... (${safeHost})`);
     await mongoose.connect(mongoUri);
 
     console.log('Clearing existing product inventory...');
