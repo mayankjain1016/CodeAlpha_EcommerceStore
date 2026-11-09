@@ -32,7 +32,9 @@ function initCheckout() {
   }
 
   const currentUser = Auth.getUser();
-  const priceDetails = Cart.getCartPriceDetails();
+  const priceDetails = (typeof Cart.calculateTotals === 'function') 
+    ? Cart.calculateTotals() 
+    : (typeof Cart.getCartPriceDetails === 'function' ? Cart.getCartPriceDetails() : { totalItems: cart.length, totalMrp: 0, subtotal: 0, discountAmount: 0, deliveryCharges: 0, grandTotal: 0, totalSavings: 0 });
 
   checkoutContainer.innerHTML = `
     <!-- 3-Step Progress Bar -->

@@ -243,6 +243,9 @@ const Cart = {
     }
     return false;
   },
+  setQty(productId, newQty) {
+    return this.updateQuantity(productId, newQty);
+  },
   removeFromCart(productId) {
     let cart = this.getCart();
     cart = cart.filter(item => item._id !== productId);
@@ -279,6 +282,9 @@ const Cart = {
     saved = saved.filter(item => item._id !== productId);
     this.saveSavedForLater(saved);
     showToast('Item removed from Saved For Later', 'info');
+  },
+  removeSavedForLater(productId) {
+    return this.removeFromSaved(productId);
   },
   clearCart() {
     storage.remove(CART_KEY);
@@ -318,6 +324,9 @@ const Cart = {
       grandTotal,
       totalSavings
     };
+  },
+  getCartPriceDetails() {
+    return this.calculateTotals();
   },
   updateCartBadge() {
     const count = this.getCartCount();
@@ -903,7 +912,20 @@ document.addEventListener('DOMContentLoaded', () => {
   Wishlist.updateUI();
 });
 
-// Expose ApexStore namespace for modules & scripts
+// Expose ApexStore namespace and global helpers
+window.Cart = Cart;
+window.Wishlist = Wishlist;
+window.Auth = Auth;
+window.Icons = Icons;
+window.RecentlyViewed = RecentlyViewed;
+window.storage = storage;
+window.formatPrice = formatPrice;
+window.renderProductCard = renderProductCard;
+window.attachCardEvents = attachCardEvents;
+window.escapeHTML = escapeHTML;
+window.showToast = showToast;
+window.api = api;
+
 window.Apex = {
   renderProductCard,
   formatPrice,
