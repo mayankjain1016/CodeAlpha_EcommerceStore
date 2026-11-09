@@ -6,9 +6,52 @@ Engineered with **plain HTML, modern CSS, and vanilla JavaScript** on the fronte
 
 ---
 
-## 🚀 Key Marketplace Features
+## Live Demo
 
-### 🛍️ Storefront & Navigation
+- **Application URL**: [https://codealpha-ecommercestore-j3gv.onrender.com](https://codealpha-ecommercestore-j3gv.onrender.com)
+
+Hosted on a free tier, the first load may take up to a minute.
+
+---
+
+## Task Requirements Covered
+
+- [x] **Product Listings**: Dynamic marketplace catalog with multi-field search, category filtering, sort options (price, rating, newest), and pagination.
+- [x] **Product Details Page**: Multi-angle gallery with hover zoom, specifications table, highlights, pincode delivery estimator, live stock indicator, and related products.
+- [x] **Shopping Cart**: Real-time quantity adjustment, item removal, save-for-later section, order summary, and free delivery thresholds.
+- [x] **Order Processing**: Server-side total calculation from database prices, atomic stock deduction with automatic rollback, and order storage.
+- [x] **User Registration and Login**: Authentication powered by `bcryptjs` for password hashing and signed JSON Web Tokens (JWT) for secure session handling.
+- [x] **Database Management**: MongoDB schemas and Mongoose models for Products, Users, and Orders with strict data validation.
+
+---
+
+## Screenshots
+
+### Home Page
+![Home Page](docs/screenshots/home.png)
+*Marketplace storefront featuring promotional banner carousel, category visual tiles, deals strip, and dense product catalog.*
+
+### Product Details Page
+![Product Details Page](docs/screenshots/product.png)
+*Detailed product view with multi-image gallery zoom, specifications table, delivery estimator, and live stock indicator.*
+
+### Shopping Cart
+![Shopping Cart](docs/screenshots/cart.png)
+*Two-column cart management with item steppers, save-for-later section, order summary, and free delivery thresholds.*
+
+### Checkout
+![Checkout](docs/screenshots/checkout.png)
+*Three-step checkout flow with real-time delivery address validation, Cash on Delivery (COD) payment, and order confirmation.*
+
+### My Orders
+![My Orders](docs/screenshots/orders.png)
+*Customer order history with visual order tracking timeline (Placed -> Shipped -> Delivered), items breakdown, and delivery details.*
+
+---
+
+## Key Marketplace Features
+
+### Storefront and Navigation
 - **Top Utility Bar**: Free delivery on orders above ₹499, Cash on Delivery available, 24x7 support.
 - **Sticky Marketplace Header**:
   - ApexStore brand with Explore *Plus* badge.
@@ -27,7 +70,7 @@ Engineered with **plain HTML, modern CSS, and vanilla JavaScript** on the fronte
   - Bold selling price, strikethrough original MRP, and green discount percentage.
   - "Free delivery" text, low-stock warning (`Only 3 left` when stock < 5), or out-of-stock badge.
   - Add to Cart button (hover on desktop, always visible on mobile).
-- **Sidebar Filters & Controls**:
+- **Sidebar Filters and Controls**:
   - Category multi-checkboxes.
   - Numeric price range filter (Min & Max with Apply button).
   - Customer rating filters (`4★ & above`, `3★ & above`).
@@ -36,7 +79,7 @@ Engineered with **plain HTML, modern CSS, and vanilla JavaScript** on the fronte
   - Mobile slide-in filter drawer.
   - Pagination controls (`Prev`, page numbers, `Next`).
 
-### 📱 Product Details (`product.html`)
+### Product Details (product.html)
 - Breadcrumbs (`Home > Category > Product`).
 - Left gallery: Thumbnails list with active border, main image with hover zoom preview.
 - Right buying column:
@@ -53,7 +96,7 @@ Engineered with **plain HTML, modern CSS, and vanilla JavaScript** on the fronte
 - "Similar Products" horizontal scroll row.
 - Mobile sticky bottom action bar.
 
-### 🛒 Cart & Save For Later (`cart.html`)
+### Cart and Save For Later (cart.html)
 - 2-Column layout:
   - Left: Product cards with brand, title, selling price, MRP, discount %, quantity stepper, Remove, and **Save For Later** action.
   - Dedicated "Saved For Later" section with "Move to Cart" button.
@@ -66,7 +109,7 @@ Engineered with **plain HTML, modern CSS, and vanilla JavaScript** on the fronte
     - "Place Order" button.
 - Clean empty cart state with SVG illustration and "Shop Now" call to action.
 
-### 💳 Checkout & Delivery (`checkout.html`)
+### Checkout and Delivery (checkout.html)
 - 3-Step visual progress tracker: `1. LOGIN` -> `2. DELIVERY ADDRESS` -> `3. ORDER SUMMARY & COD`.
 - Delivery address form with inline real-time validation:
   - Full Name
@@ -79,13 +122,13 @@ Engineered with **plain HTML, modern CSS, and vanilla JavaScript** on the fronte
   - Atomic stock reduction with automatic rollback if any product fails.
 - Order success screen: Green checkmark SVG, Order ID, estimated delivery date, summary, and links to "My Orders" and "Continue Shopping".
 
-### 📦 Order History (`orders.html`)
+### Order History (orders.html)
 - Order cards with Order ID, placement date, total price.
 - **3-Step Visual Tracking Timeline**: `Placed` (Green) -> `Shipped` -> `Delivered`.
 - Delivery address summary.
 - Breakdown table of ordered items with thumbnails, unit prices, and quantities.
 
-### 🔐 Authentication (`login.html` & `register.html`)
+### Authentication (login.html and register.html)
 - Flipkart-style split-screen: Brand blue banner with service benefits on the left, clean form on the right.
 - Show/hide password SVG eye toggle.
 - Input validation and inline error banners.
@@ -93,7 +136,7 @@ Engineered with **plain HTML, modern CSS, and vanilla JavaScript** on the fronte
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technologies |
 | :--- | :--- |
@@ -106,7 +149,7 @@ Engineered with **plain HTML, modern CSS, and vanilla JavaScript** on the fronte
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 EcommerceStore/
@@ -155,7 +198,7 @@ EcommerceStore/
 
 ---
 
-## 📡 API Endpoints
+## API Endpoints
 
 | Method | Endpoint | Auth | Description |
 | :--- | :--- | :---: | :--- |
@@ -168,7 +211,7 @@ EcommerceStore/
 
 ---
 
-## 💻 Local Setup & Quick Start
+## Local Setup and Quick Start
 
 1. **Install Dependencies:**
    ```bash
