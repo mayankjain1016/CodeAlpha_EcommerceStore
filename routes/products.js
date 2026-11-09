@@ -9,8 +9,91 @@ const escapeRegex = (text) => {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 };
 
+// GET /api/products/home
+// Returns curated sections for the Home page in a single fast, cache-friendly request
+router.get('/home', async (req, res, next) => {
+  try {
+    // 1. Deals of the day: highest discount percentage
+    const deals = await Product.aggregate([
+      { $match: { mrp: { $gt: 0 }, price: { $gt: 0 } } },
+      {
+        $addFields: {
+          discountPct: {
+            $multiply: [
+              { $divide: [{ $subtract: ['$mrp', '$price'] }, '$mrp'] },
+              100
+            ]
+          }
+        }
+      },
+      { $match: { discountPct: { $gt: 0 } } },
+      { $sort: { discountPct: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // 2. Top rated products (rating 4.4+)
+    const topRated = await Product.find({ rating: { $gte: 4.4 } })
+      .sort({ rating: -1, reviewCount: -1 })
+      .limit(10);
+
+    // 3. New arrivals
+    const newArrivals = await Product.find({})
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    // 4. Best sellers (sorted by reviewCount)
+    const bestSellers = await Product.find({})
+      .sort({ reviewCount: -1, rating: -1 })
+      .limit(10);
+
+    // 5. Category 2x2 blocks for 4 main categories
+    const categories = ['Electronics', 'Fashion', 'Home', 'Sports'];
+    const categoryBlocks = await Promise.all(
+      categories.map(async (catName) => {
+        const catProducts = await Product.find({
+          category: new RegExp(`^${catName}$`, 'i')
+        })
+          .sort({ rating: -1, reviewCount: -1 })
+          .limit(4)
+          .select('_id name price mrp image images brand category rating stock');
+
+        let minPrice = 0;
+        if (catProducts.length > 0) {
+          minPrice = Math.min(...catProducts.map(p => p.price));
+        }
+
+        return {
+          category: catName,
+          title: catName === 'Home' ? 'Home & Kitchen Living' :
+                 catName === 'Sports' ? 'Sports & Fitness Gear' :
+                 catName === 'Fashion' ? 'Fashion & Apparel Trends' :
+                 'Electronics & Daily Gadgets',
+          minPrice,
+          products: catProducts
+        };
+      })
+    );
+
+    // 6. Real brands in the catalog
+    const brands = await Product.distinct('brand');
+    brands.sort((a, b) => a.localeCompare(b));
+
+    res.set('Cache-Control', 'public, max-age=60');
+    res.json({
+      deals,
+      topRated,
+      newArrivals,
+      bestSellers,
+      categoryBlocks,
+      brands
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /api/products
-// Query params: search, category, sort, minPrice, maxPrice, minRating, inStock, page, limit
+// Query params: search, category, sort, minPrice, maxPrice, minRating, inStock, ids, page, limit
 router.get('/', async (req, res, next) => {
   try {
     const {
@@ -21,11 +104,23 @@ router.get('/', async (req, res, next) => {
       maxPrice,
       minRating,
       inStock,
+      ids,
       page = 1,
       limit = 12
     } = req.query;
 
     const filter = {};
+
+    // Specific product IDs filter (e.g. for Recently Viewed)
+    if (ids && typeof ids === 'string' && ids.trim()) {
+      const idList = ids
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => mongoose.Types.ObjectId.isValid(s));
+      if (idList.length > 0) {
+        filter._id = { $in: idList };
+      }
+    }
 
     // Category filter
     if (category && category.trim() && category.trim().toLowerCase() !== 'all') {
@@ -44,7 +139,7 @@ router.get('/', async (req, res, next) => {
     }
 
     // Price range filter
-    if (minPrice !== undefined && minPrice !== '' || maxPrice !== undefined && maxPrice !== '') {
+    if ((minPrice !== undefined && minPrice !== '') || (maxPrice !== undefined && maxPrice !== '')) {
       filter.price = {};
       if (minPrice !== undefined && minPrice !== '') {
         const parsedMin = Number(minPrice);
@@ -72,25 +167,57 @@ router.get('/', async (req, res, next) => {
       filter.stock = { $gt: 0 };
     }
 
-    // Sort order
+    // Pagination
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 12));
+    const skip = (pageNum - 1) * limitNum;
+
+    // Handle discount sort via aggregation pipeline
+    if (sort === 'discount') {
+      const total = await Product.countDocuments(filter);
+      const products = await Product.aggregate([
+        { $match: filter },
+        {
+          $addFields: {
+            discountPct: {
+              $cond: [
+                { $gt: ['$mrp', '$price'] },
+                { $multiply: [{ $divide: [{ $subtract: ['$mrp', '$price'] }, '$mrp'] }, 100] },
+                0
+              ]
+            }
+          }
+        },
+        { $sort: { discountPct: -1, createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limitNum }
+      ]);
+
+      const pages = Math.ceil(total / limitNum) || 1;
+      return res.json({
+        products,
+        total,
+        page: pageNum,
+        pages
+      });
+    }
+
+    // Standard sort options
     let sortOptions = { createdAt: -1 };
-    if (sort === 'price-low-high') {
+    if (sort === 'price-low-high' || sort === 'price_asc') {
       sortOptions = { price: 1 };
-    } else if (sort === 'price-high-low') {
+    } else if (sort === 'price-high-low' || sort === 'price_desc') {
       sortOptions = { price: -1 };
     } else if (sort === 'rating') {
       sortOptions = { rating: -1, reviewCount: -1 };
+    } else if (sort === 'reviewCount' || sort === 'bestsellers') {
+      sortOptions = { reviewCount: -1, rating: -1 };
     } else if (sort === 'newest') {
       sortOptions = { createdAt: -1 };
     } else {
       // 'relevance' or default
       sortOptions = { createdAt: -1 };
     }
-
-    // Pagination
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 12));
-    const skip = (pageNum - 1) * limitNum;
 
     const total = await Product.countDocuments(filter);
     const products = await Product.find(filter)

@@ -1,24 +1,20 @@
 /**
  * ApexStore - index.js
- * Catalog Home: Hero Carousel (auto 5s, arrows, dots, hover pause),
- * Top Deals Horizontal Scroll, Category Tiles, Filter Sidebar & Drawer,
- * Sort Dropdown, Product Cards with Wishlist & Hover Add-to-Cart, Pagination.
+ * Home Page Controller:
+ * 1. Hero Carousel (5s auto-slide, arrows, dots, hover-pause)
+ * 2. Deal of the Day Midnight Countdown Timer
+ * 3. Horizontal Scroll Rows with Smooth Left/Right Arrow Buttons
+ * 4. API Data Fetch (/api/products/home) for Deals, Top Rated, New Arrivals, Best Sellers, Category Quad Blocks, Brands
+ * 5. Recently Viewed Products (localStorage apex_recently_viewed)
  */
 
-// State Management
-let currentCatalogState = {
-  page: 1,
-  limit: 12,
-  category: 'All',
-  search: '',
-  sort: 'relevance',
-  minPrice: '',
-  maxPrice: '',
-  minRating: '',
-  inStock: false,
-  total: 0,
-  pages: 1
-};
+document.addEventListener('DOMContentLoaded', () => {
+  initHeroCarousel();
+  initDealCountdown();
+  initHorizontalScrollArrows();
+  loadHomePageData();
+  loadRecentlyViewed();
+});
 
 // ==========================================================================
 // 1. Hero Carousel Controller
@@ -37,7 +33,6 @@ function initHeroCarousel() {
   let autoTimer = null;
   const slideCount = slides.length;
 
-  // Create dot buttons
   if (dotsContainer) {
     dotsContainer.innerHTML = '';
     slides.forEach((_, idx) => {
@@ -50,14 +45,21 @@ function initHeroCarousel() {
   }
 
   function updateDots() {
-    const dots = document.querySelectorAll('.carousel-dot');
+    if (!dotsContainer) return;
+    const dots = dotsContainer.querySelectorAll('.carousel-dot');
     dots.forEach((dot, idx) => {
       dot.classList.toggle('active', idx === currentIndex);
     });
   }
 
   function goToSlide(index) {
-    currentIndex = (index + slideCount) % slideCount;
+    if (index < 0) {
+      currentIndex = slideCount - 1;
+    } else if (index >= slideCount) {
+      currentIndex = 0;
+    } else {
+      currentIndex = index;
+    }
     track.style.transform = `translateX(-${currentIndex * 100}%)`;
     updateDots();
   }
@@ -70,495 +72,330 @@ function initHeroCarousel() {
     goToSlide(currentIndex - 1);
   }
 
-  if (nextBtn) nextBtn.addEventListener('click', nextSlide);
-  if (prevBtn) prevBtn.addEventListener('click', prevSlide);
+  if (nextBtn) {
+    nextBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      nextSlide();
+      resetAutoTimer();
+    });
+  }
 
-  // Auto-play every 5 seconds
-  function startAuto() {
-    stopAuto();
+  if (prevBtn) {
+    prevBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      prevSlide();
+      resetAutoTimer();
+    });
+  }
+
+  function startAutoTimer() {
+    stopAutoTimer();
     autoTimer = setInterval(nextSlide, 5000);
   }
 
-  function stopAuto() {
-    if (autoTimer) clearInterval(autoTimer);
+  function stopAutoTimer() {
+    if (autoTimer) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+    }
   }
 
-  startAuto();
+  function resetAutoTimer() {
+    stopAutoTimer();
+    startAutoTimer();
+  }
 
-  // Pause on hover
   if (section) {
-    section.addEventListener('mouseenter', stopAuto);
-    section.addEventListener('mouseleave', startAuto);
+    section.addEventListener('mouseenter', stopAutoTimer);
+    section.addEventListener('mouseleave', startAutoTimer);
+    section.addEventListener('focusin', stopAutoTimer);
+    section.addEventListener('focusout', startAutoTimer);
   }
+
+  startAutoTimer();
 }
 
 // ==========================================================================
-// 2. "Top Deals" Strip Loader
+// 2. Deal of the Day Midnight Countdown Timer
 // ==========================================================================
-async function loadTopDeals() {
-  const dealsContainer = document.getElementById('top-deals-container');
-  if (!dealsContainer) return;
+function initDealCountdown() {
+  const hoursEl = document.getElementById('countdown-hours');
+  const minutesEl = document.getElementById('countdown-minutes');
+  const secondsEl = document.getElementById('countdown-seconds');
 
-  try {
-    const res = await api('/api/products?limit=8&sort=newest');
-    const products = res.products || [];
+  if (!hoursEl || !minutesEl || !secondsEl) return;
 
-    // Filter products with good discount
-    const discounted = products.filter(p => p.mrp > p.price);
+  function updateTimer() {
+    const now = new Date();
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 0); // Next midnight local time
 
-    if (discounted.length === 0) {
-      dealsContainer.parentElement.style.display = 'none';
+    const diffMs = midnight.getTime() - now.getTime();
+    if (diffMs <= 0) {
+      // Midnight reached: rolled over to next day
+      hoursEl.textContent = '23';
+      minutesEl.textContent = '59';
+      secondsEl.textContent = '59';
       return;
     }
 
-    dealsContainer.innerHTML = discounted.map(p => {
-      const discountPct = Math.round(((p.mrp - p.price) / p.mrp) * 100);
-      return `
-        <a href="product.html?id=${p._id}" class="deal-item-card" aria-label="${escapeHTML(p.name)}">
-          <img src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}" class="deal-item-img" loading="lazy" />
-          <div class="deal-item-brand">${escapeHTML(p.brand)}</div>
-          <div class="deal-item-name">${escapeHTML(p.name)}</div>
-          <div class="deal-item-offer">${discountPct}% OFF</div>
-          <div class="deal-item-price">${formatPrice(p.price)}</div>
-        </a>
-      `;
-    }).join('');
+    const totalSecs = Math.floor(diffMs / 1000);
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+
+    hoursEl.textContent = String(hrs).padStart(2, '0');
+    minutesEl.textContent = String(mins).padStart(2, '0');
+    secondsEl.textContent = String(secs).padStart(2, '0');
+  }
+
+  updateTimer();
+  setInterval(updateTimer, 1000);
+}
+
+// ==========================================================================
+// 3. Horizontal Scroll Rows Controller
+// ==========================================================================
+function initHorizontalScrollArrows() {
+  document.querySelectorAll('.row-scroll-arrow').forEach((arrow) => {
+    arrow.addEventListener('click', () => {
+      const targetId = arrow.getAttribute('data-target');
+      const targetRow = document.getElementById(targetId);
+      if (!targetRow) return;
+
+      const isNext = arrow.classList.contains('next');
+      const scrollStep = Math.max(300, Math.floor(targetRow.clientWidth * 0.7));
+      const newScrollLeft = isNext
+        ? targetRow.scrollLeft + scrollStep
+        : targetRow.scrollLeft - scrollStep;
+
+      targetRow.scrollTo({
+        left: newScrollLeft,
+        behavior: 'smooth'
+      });
+    });
+  });
+
+  // Observe scroll position to optionally adjust arrow states
+  const scrollRows = document.querySelectorAll('.products-scroll-row');
+  scrollRows.forEach((row) => {
+    const updateArrows = () => {
+      const parent = row.closest('.home-scroll-wrapper');
+      if (!parent) return;
+      const prev = parent.querySelector('.row-scroll-arrow.prev');
+      const next = parent.querySelector('.row-scroll-arrow.next');
+
+      if (prev) {
+        prev.style.opacity = row.scrollLeft <= 10 ? '0.3' : '1';
+        prev.style.pointerEvents = row.scrollLeft <= 10 ? 'none' : 'auto';
+      }
+      if (next) {
+        const atEnd = row.scrollLeft + row.clientWidth >= row.scrollWidth - 10;
+        next.style.opacity = atEnd ? '0.3' : '1';
+        next.style.pointerEvents = atEnd ? 'none' : 'auto';
+      }
+    };
+
+    row.addEventListener('scroll', updateArrows, { passive: true });
+    // Run after render
+    setTimeout(updateArrows, 300);
+  });
+}
+
+// ==========================================================================
+// 4. Load Home Page Data from API
+// ==========================================================================
+async function loadHomePageData() {
+  try {
+    const res = await fetch('/api/products/home');
+    if (!res.ok) {
+      throw new Error(`Failed to load home data (${res.status})`);
+    }
+    const data = await res.json();
+    const collectedProducts = [];
+
+    // A. Deal of the Day
+    const dealsRow = document.getElementById('deals-products-row');
+    if (dealsRow && Array.isArray(data.deals) && data.deals.length > 0) {
+      dealsRow.innerHTML = data.deals
+        .map((p) => window.Apex.renderProductCard(p, { showDiscountPill: true }))
+        .join('');
+      collectedProducts.push(...data.deals);
+    } else if (dealsRow) {
+      dealsRow.innerHTML = '<p class="empty-state-muted">No deals available right now.</p>';
+    }
+
+    // B. Shop by Category Quad Blocks
+    const catBlocksContainer = document.getElementById('category-blocks-container');
+    if (catBlocksContainer && Array.isArray(data.categoryBlocks) && data.categoryBlocks.length > 0) {
+      catBlocksContainer.innerHTML = data.categoryBlocks
+        .map((block) => {
+          const quadItemsHtml = (block.products || [])
+            .slice(0, 4)
+            .map((item) => {
+              const imgUrl = (Array.isArray(item.images) && item.images[0]) ? item.images[0] : (item.image || '');
+              return `
+                <a href="product.html?id=${item._id}" class="cat-quad-item">
+                  <div class="cat-quad-img-wrap">
+                    <img src="${imgUrl}" alt="${item.name}" loading="lazy" />
+                  </div>
+                  <span class="cat-quad-name" title="${item.name}">${item.name}</span>
+                  <span class="cat-quad-price">From ${window.Apex.formatPrice(item.price)}</span>
+                </a>
+              `;
+            })
+            .join('');
+
+          return `
+            <div class="category-block-card">
+              <div class="category-block-header">
+                <h3 class="category-block-title">${block.category}</h3>
+                <span class="category-block-subtitle">Top picks & essentials</span>
+              </div>
+              <div class="category-block-2x2">
+                ${quadItemsHtml}
+              </div>
+              <a href="products.html?category=${encodeURIComponent(block.category)}" class="cat-block-see-all">
+                See all in ${block.category}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </a>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    // C. Top Rated
+    const topRatedRow = document.getElementById('top-rated-products-row');
+    if (topRatedRow && Array.isArray(data.topRated) && data.topRated.length > 0) {
+      topRatedRow.innerHTML = data.topRated
+        .map((p) => window.Apex.renderProductCard(p, { showDiscountPill: true }))
+        .join('');
+      collectedProducts.push(...data.topRated);
+    } else if (topRatedRow) {
+      topRatedRow.innerHTML = '<p class="empty-state-muted">No top-rated items currently found.</p>';
+    }
+
+    // D. New Arrivals
+    const newArrivalsRow = document.getElementById('new-arrivals-products-row');
+    if (newArrivalsRow && Array.isArray(data.newArrivals) && data.newArrivals.length > 0) {
+      newArrivalsRow.innerHTML = data.newArrivals
+        .map((p) => window.Apex.renderProductCard(p, { showDiscountPill: true }))
+        .join('');
+      collectedProducts.push(...data.newArrivals);
+    } else if (newArrivalsRow) {
+      newArrivalsRow.innerHTML = '<p class="empty-state-muted">No new arrivals at this moment.</p>';
+    }
+
+    // E. Best Sellers
+    const bestSellersRow = document.getElementById('best-sellers-products-row');
+    if (bestSellersRow && Array.isArray(data.bestSellers) && data.bestSellers.length > 0) {
+      bestSellersRow.innerHTML = data.bestSellers
+        .map((p) => window.Apex.renderProductCard(p, { showDiscountPill: true }))
+        .join('');
+      collectedProducts.push(...data.bestSellers);
+    } else if (bestSellersRow) {
+      bestSellersRow.innerHTML = '<p class="empty-state-muted">No best sellers available.</p>';
+    }
+
+    // F. Brand Chips
+    const brandsContainer = document.getElementById('brand-chips-container');
+    if (brandsContainer && Array.isArray(data.brands) && data.brands.length > 0) {
+      brandsContainer.innerHTML = data.brands
+        .map(
+          (b) => `
+          <a href="products.html?search=${encodeURIComponent(b)}" class="brand-chip">
+            <span class="brand-chip-name">${b}</span>
+            <span class="brand-chip-explore">Explore &rarr;</span>
+          </a>
+        `
+        )
+        .join('');
+    }
+
+    // Attach cart and wishlist listeners to all rendered product cards
+    if (collectedProducts.length > 0) {
+      window.Apex.attachCardEvents(collectedProducts, document);
+    }
+
+    // Re-check scroll arrows visibility
+    setTimeout(() => {
+      document.querySelectorAll('.products-scroll-row').forEach((row) => {
+        row.dispatchEvent(new Event('scroll'));
+      });
+    }, 200);
   } catch (err) {
-    console.warn('Error loading top deals:', err);
+    console.error('Error loading home page sections:', err);
+    // Remove skeleton loaders gracefully
+    ['deals-products-row', 'top-rated-products-row', 'new-arrivals-products-row', 'best-sellers-products-row'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '<p class="empty-state-muted">Unable to load products. Please refresh the page.</p>';
+    });
   }
 }
 
 // ==========================================================================
-// 3. Product Catalog Listing, Filters & Pagination
+// 5. Recently Viewed Products (localStorage apex_recently_viewed)
 // ==========================================================================
-async function fetchCatalog() {
-  const grid = document.getElementById('products-grid');
-  const countText = document.getElementById('results-count-display');
-  const paginationContainer = document.getElementById('pagination-container');
+async function loadRecentlyViewed() {
+  const section = document.getElementById('section-recently-viewed');
+  const row = document.getElementById('recently-viewed-products-row');
+  const clearBtn = document.getElementById('clear-recently-viewed');
 
-  if (!grid) return;
+  if (!section || !row) return;
 
-  // Render skeleton loading cards
-  grid.innerHTML = Array(6).fill(0).map(() => `
-    <div class="product-card">
-      <div class="skeleton-box" style="height: 190px; width: 100%; margin-bottom: 12px;"></div>
-      <div class="skeleton-box" style="height: 12px; width: 40%; margin-bottom: 8px;"></div>
-      <div class="skeleton-box" style="height: 16px; width: 85%; margin-bottom: 8px;"></div>
-      <div class="skeleton-box" style="height: 14px; width: 50%; margin-bottom: 12px;"></div>
-      <div class="skeleton-box" style="height: 22px; width: 60%;"></div>
-    </div>
-  `).join('');
+  const ids = window.Apex.RecentlyViewed.getAll();
+  if (!ids || ids.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
 
   try {
-    const params = new URLSearchParams();
-    params.append('page', currentCatalogState.page);
-    params.append('limit', currentCatalogState.limit);
-
-    if (currentCatalogState.category && currentCatalogState.category !== 'All') {
-      params.append('category', currentCatalogState.category);
+    const res = await fetch(`/api/products?ids=${encodeURIComponent(ids.join(','))}`);
+    if (!res.ok) {
+      section.style.display = 'none';
+      return;
     }
-    if (currentCatalogState.search) {
-      params.append('search', currentCatalogState.search);
-    }
-    if (currentCatalogState.sort) {
-      params.append('sort', currentCatalogState.sort);
-    }
-    if (currentCatalogState.minPrice) {
-      params.append('minPrice', currentCatalogState.minPrice);
-    }
-    if (currentCatalogState.maxPrice) {
-      params.append('maxPrice', currentCatalogState.maxPrice);
-    }
-    if (currentCatalogState.minRating) {
-      params.append('minRating', currentCatalogState.minRating);
-    }
-    if (currentCatalogState.inStock) {
-      params.append('inStock', 'true');
-    }
-
-    const data = await api(`/api/products?${params.toString()}`);
+    const data = await res.json();
     const products = data.products || [];
-    currentCatalogState.total = data.total || 0;
-    currentCatalogState.pages = data.pages || 1;
 
-    // Update Result Count text
-    if (countText) {
-      const startItem = currentCatalogState.total === 0 ? 0 : (currentCatalogState.page - 1) * currentCatalogState.limit + 1;
-      const endItem = Math.min(currentCatalogState.total, currentCatalogState.page * currentCatalogState.limit);
-      countText.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${currentCatalogState.total}</strong> products`;
+    if (products.length === 0) {
+      section.style.display = 'none';
+      return;
     }
 
-    renderProductCards(products);
-    renderPagination(paginationContainer);
-  } catch (error) {
-    console.error('Failed to load catalog:', error);
-    grid.innerHTML = `
-      <div style="grid-column: 1 / -1; padding: 40px; text-align: center;">
-        <p style="color: var(--danger); font-size: 15px; font-weight: 600; margin-bottom: 12px;">
-          Failed to load products: ${escapeHTML(error.message)}
-        </p>
-        <button class="btn-add-cart" style="max-width: 180px; margin: 0 auto;" onclick="fetchCatalog()">
-          Retry Loading
-        </button>
-      </div>
-    `;
+    // Sort to match recently viewed order
+    const ordered = [];
+    ids.forEach((id) => {
+      const found = products.find((p) => p._id === id);
+      if (found) ordered.push(found);
+    });
+
+    row.innerHTML = ordered
+      .map((p) => window.Apex.renderProductCard(p, { showDiscountPill: true }))
+      .join('');
+    section.style.display = '';
+
+    window.Apex.attachCardEvents(ordered, row);
+
+    // Clear history handler
+    if (clearBtn) {
+      clearBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.Apex.RecentlyViewed.clear();
+        section.style.display = 'none';
+        row.innerHTML = '';
+        if (window.Apex.showToast) {
+          window.Apex.showToast('Recently viewed history cleared');
+        }
+      });
+    }
+
+    setTimeout(() => {
+      row.dispatchEvent(new Event('scroll'));
+    }, 200);
+  } catch (err) {
+    console.error('Error fetching recently viewed products:', err);
+    section.style.display = 'none';
   }
 }
-
-function renderProductCards(products) {
-  const grid = document.getElementById('products-grid');
-  if (!grid) return;
-
-  if (products.length === 0) {
-    grid.innerHTML = `
-      <div style="grid-column: 1 / -1; padding: 60px 20px; text-align: center;">
-        <div style="color: var(--text-muted); margin-bottom: 12px;">${Icons.search(48)}</div>
-        <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">No products found</h3>
-        <p style="color: var(--text-muted); font-size: 13px; max-width: 360px; margin: 0 auto 16px auto;">
-          Try adjusting or clearing your filters to discover matching items across our collections.
-        </p>
-        <button class="btn-buy-now" style="max-width: 160px; margin: 0 auto;" onclick="clearAllFilters()">
-          Clear All Filters
-        </button>
-      </div>
-    `;
-    return;
-  }
-
-  grid.innerHTML = products.map(p => {
-    const isOutOfStock = p.stock <= 0;
-    const isLowStock = p.stock > 0 && p.stock < 5;
-    const discount = p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
-    const isWishlisted = Wishlist.has(p._id);
-
-    return `
-      <div class="product-card ${isOutOfStock ? 'out-of-stock' : ''}" data-id="${p._id}">
-        <!-- Wishlist Toggle -->
-        <button 
-          class="wishlist-btn ${isWishlisted ? 'active' : ''}" 
-          data-id="${p._id}" 
-          aria-label="Save to Wishlist"
-        >
-          ${Icons.heart(18, isWishlisted)}
-        </button>
-
-        <!-- Product Image -->
-        <a href="product.html?id=${p._id}" class="product-card-img-wrap" aria-label="View ${escapeHTML(p.name)}">
-          <img 
-            src="${escapeHTML(p.image)}" 
-            alt="${escapeHTML(p.name)}" 
-            class="product-card-img" 
-            loading="lazy"
-          />
-        </a>
-
-        <!-- Brand & Title -->
-        <div class="product-brand">${escapeHTML(p.brand || 'ApexStore')}</div>
-        <h3 class="product-title">
-          <a href="product.html?id=${p._id}" title="${escapeHTML(p.name)}">${escapeHTML(p.name)}</a>
-        </h3>
-
-        <!-- Rating Pill -->
-        <div style="display: flex; align-items: center; margin-bottom: 4px;">
-          <span class="rating-pill">
-            <span>${p.rating ? p.rating.toFixed(1) : '4.2'}</span>
-            ${Icons.star(10, true)}
-          </span>
-          <span class="rating-count">(${p.reviewCount ? p.reviewCount.toLocaleString('en-IN') : '120'})</span>
-        </div>
-
-        <!-- Price Block -->
-        <div class="product-price-block">
-          <span class="price-selling">${formatPrice(p.price)}</span>
-          ${p.mrp > p.price ? `<span class="price-mrp">${formatPrice(p.mrp)}</span>` : ''}
-          ${discount > 0 ? `<span class="price-discount">${discount}% off</span>` : ''}
-        </div>
-
-        <!-- Badges -->
-        ${p.freeDelivery ? `<div class="delivery-badge free">Free delivery</div>` : `<div class="delivery-badge">Standard Delivery</div>`}
-        ${isLowStock ? `<div class="stock-warning-text">Only ${p.stock} left in stock!</div>` : ''}
-        ${isOutOfStock ? `<div class="out-of-stock-label">Out of stock</div>` : ''}
-
-        <!-- Add to Cart Button -->
-        <div class="card-action-wrap">
-          <button 
-            class="card-add-cart-btn btn-add-card-action" 
-            data-id="${p._id}"
-            ${isOutOfStock ? 'disabled' : ''}
-          >
-            ${Icons.cart(15)}
-            <span>${isOutOfStock ? 'Out of Stock' : 'Add to Cart'}</span>
-          </button>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  // Attach Event Handlers on Cards
-  attachCardEvents(products);
-}
-
-function attachCardEvents(products) {
-  // Wishlist heart buttons
-  const wishlistButtons = document.querySelectorAll('.wishlist-btn');
-  wishlistButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const id = btn.getAttribute('data-id');
-      if (id) {
-        Wishlist.toggle(id);
-      }
-    });
-  });
-
-  // Add to cart buttons
-  const addButtons = document.querySelectorAll('.btn-add-card-action');
-  addButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const id = btn.getAttribute('data-id');
-      const prod = products.find(p => String(p._id) === id);
-      if (prod) {
-        Cart.addToCart(prod, 1);
-      }
-    });
-  });
-}
-
-function renderPagination(container) {
-  if (!container) return;
-
-  const { page, pages } = currentCatalogState;
-  if (pages <= 1) {
-    container.innerHTML = '';
-    return;
-  }
-
-  let html = `
-    <button class="page-btn" id="page-prev-btn" ${page <= 1 ? 'disabled' : ''}>
-      ${Icons.chevronLeft(14)} Prev
-    </button>
-  `;
-
-  for (let i = 1; i <= pages; i++) {
-    html += `
-      <button class="page-btn ${i === page ? 'active' : ''}" data-page="${i}">
-        ${i}
-      </button>
-    `;
-  }
-
-  html += `
-    <button class="page-btn" id="page-next-btn" ${page >= pages ? 'disabled' : ''}>
-      Next ${Icons.chevronRight(14)}
-    </button>
-  `;
-
-  container.innerHTML = html;
-
-  // Attach Pagination Clicks
-  const prevBtn = container.querySelector('#page-prev-btn');
-  const nextBtn = container.querySelector('#page-next-btn');
-  const numButtons = container.querySelectorAll('.page-btn[data-page]');
-
-  if (prevBtn) {
-    prevBtn.addEventListener('click', () => {
-      if (currentCatalogState.page > 1) {
-        currentCatalogState.page -= 1;
-        fetchCatalog();
-        scrollToCatalog();
-      }
-    });
-  }
-
-  if (nextBtn) {
-    nextBtn.addEventListener('click', () => {
-      if (currentCatalogState.page < currentCatalogState.pages) {
-        currentCatalogState.page += 1;
-        fetchCatalog();
-        scrollToCatalog();
-      }
-    });
-  }
-
-  numButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const p = parseInt(btn.getAttribute('data-page'), 10);
-      if (p !== currentCatalogState.page) {
-        currentCatalogState.page = p;
-        fetchCatalog();
-        scrollToCatalog();
-      }
-    });
-  });
-}
-
-function scrollToCatalog() {
-  const target = document.getElementById('catalog-listing-section');
-  if (target) {
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-}
-
-// Clear all filters
-function clearAllFilters() {
-  currentCatalogState.category = 'All';
-  currentCatalogState.search = '';
-  currentCatalogState.minPrice = '';
-  currentCatalogState.maxPrice = '';
-  currentCatalogState.minRating = '';
-  currentCatalogState.inStock = false;
-  currentCatalogState.sort = 'relevance';
-  currentCatalogState.page = 1;
-
-  // Reset inputs
-  const catCheckboxes = document.querySelectorAll('.filter-category-checkbox');
-  catCheckboxes.forEach(cb => cb.checked = false);
-
-  const minPriceInput = document.getElementById('filter-min-price');
-  if (minPriceInput) minPriceInput.value = '';
-
-  const maxPriceInput = document.getElementById('filter-max-price');
-  if (maxPriceInput) maxPriceInput.value = '';
-
-  const ratingRadios = document.querySelectorAll('input[name="filter-rating"]');
-  ratingRadios.forEach(r => r.checked = false);
-
-  const inStockCheckbox = document.getElementById('filter-instock-only');
-  if (inStockCheckbox) inStockCheckbox.checked = false;
-
-  const sortSelect = document.getElementById('catalog-sort-select');
-  if (sortSelect) sortSelect.value = 'relevance';
-
-  fetchCatalog();
-}
-
-// Global Trigger used by header search bar
-window.triggerCatalogFilter = function(searchQuery, category) {
-  currentCatalogState.search = searchQuery || '';
-  currentCatalogState.category = category || 'All';
-  currentCatalogState.page = 1;
-
-  // Sync category checkboxes
-  const catCheckboxes = document.querySelectorAll('.filter-category-checkbox');
-  catCheckboxes.forEach(cb => {
-    cb.checked = (cb.value === category);
-  });
-
-  fetchCatalog();
-  scrollToCatalog();
-};
-
-// ==========================================================================
-// 4. Filters Sidebar & Drawer Listeners Initialization
-// ==========================================================================
-function initFilterControls() {
-  // Category Checkboxes
-  const catCheckboxes = document.querySelectorAll('.filter-category-checkbox');
-  catCheckboxes.forEach(cb => {
-    cb.addEventListener('change', () => {
-      // Find selected category
-      const checkedBoxes = Array.from(catCheckboxes).filter(c => c.checked);
-      if (checkedBoxes.length === 1) {
-        currentCatalogState.category = checkedBoxes[0].value;
-      } else {
-        currentCatalogState.category = 'All';
-      }
-      currentCatalogState.page = 1;
-      fetchCatalog();
-    });
-  });
-
-  // Price Apply
-  const applyPriceBtn = document.getElementById('price-filter-apply-btn');
-  if (applyPriceBtn) {
-    applyPriceBtn.addEventListener('click', () => {
-      const minVal = document.getElementById('filter-min-price').value.trim();
-      const maxVal = document.getElementById('filter-max-price').value.trim();
-      currentCatalogState.minPrice = minVal;
-      currentCatalogState.maxPrice = maxVal;
-      currentCatalogState.page = 1;
-      fetchCatalog();
-    });
-  }
-
-  // Minimum Rating Radios
-  const ratingRadios = document.querySelectorAll('input[name="filter-rating"]');
-  ratingRadios.forEach(radio => {
-    radio.addEventListener('change', (e) => {
-      currentCatalogState.minRating = e.target.value;
-      currentCatalogState.page = 1;
-      fetchCatalog();
-    });
-  });
-
-  // In-Stock Only
-  const inStockCheckbox = document.getElementById('filter-instock-only');
-  if (inStockCheckbox) {
-    inStockCheckbox.addEventListener('change', (e) => {
-      currentCatalogState.inStock = e.target.checked;
-      currentCatalogState.page = 1;
-      fetchCatalog();
-    });
-  }
-
-  // Sort Dropdown
-  const sortSelect = document.getElementById('catalog-sort-select');
-  if (sortSelect) {
-    sortSelect.addEventListener('change', (e) => {
-      currentCatalogState.sort = e.target.value;
-      currentCatalogState.page = 1;
-      fetchCatalog();
-    });
-  }
-
-  // Clear Filters
-  const clearBtn = document.getElementById('clear-filters-btn');
-  if (clearBtn) {
-    clearBtn.addEventListener('click', clearAllFilters);
-  }
-
-  // Mobile Filter Drawer Toggle
-  const openDrawerBtn = document.getElementById('open-mobile-filters');
-  const sidebar = document.getElementById('filters-sidebar');
-  const closeDrawerBtn = document.getElementById('close-mobile-filters');
-
-  if (openDrawerBtn && sidebar) {
-    openDrawerBtn.addEventListener('click', () => {
-      sidebar.classList.add('open');
-    });
-  }
-
-  if (closeDrawerBtn && sidebar) {
-    closeDrawerBtn.addEventListener('click', () => {
-      sidebar.classList.remove('open');
-    });
-  }
-}
-
-// Initial Page Load
-document.addEventListener('DOMContentLoaded', () => {
-  // Read URL parameters if present
-  const urlParams = new URLSearchParams(window.location.search);
-  const catParam = urlParams.get('category');
-  const searchParam = urlParams.get('search');
-
-  if (catParam) {
-    currentCatalogState.category = catParam;
-    const catCheckboxes = document.querySelectorAll('.filter-category-checkbox');
-    catCheckboxes.forEach(cb => {
-      if (cb.value.toLowerCase() === catParam.toLowerCase()) cb.checked = true;
-    });
-  }
-
-  if (searchParam) {
-    currentCatalogState.search = searchParam;
-    const searchInput = document.getElementById('header-search-input');
-    if (searchInput) searchInput.value = searchParam;
-  }
-
-  initHeroCarousel();
-  loadTopDeals();
-  initFilterControls();
-  fetchCatalog();
-});
