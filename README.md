@@ -71,7 +71,6 @@ Hosted on a free tier, the first load may take up to a minute.
 - **Auto-Sliding Sliders**: All product rows smoothly auto-slide one card every 3.5 seconds with seamless looping, pause on hover/focus/touch, tab visibility pause, and respect for `prefers-reduced-motion`.
 - **Recently Viewed**: Persistent history tracked in `localStorage` across visited product pages with one-click clear history.
 - **Dual Promo Banners**: Budget Store ("Under ₹999") and Flagship Gear ("Top Rated 4.5★") with brand color gradients and product previews.
-- **Featured Brands**: Authentic brands with real product count badges, linking to brand-filtered catalog listings.
 
 ### Dedicated Catalog Listing (products.html)
 - Multi-field search and query synchronization.

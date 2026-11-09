@@ -522,22 +522,6 @@ function populateAllSections(data) {
     }
   }
 
-  // H. Featured Brands (with real product counts linking to ?brand=...)
-  const brandsContainer = document.getElementById('brand-chips-container');
-  if (brandsContainer && Array.isArray(data.brands) && data.brands.length > 0) {
-    brandsContainer.innerHTML = data.brands.map(b => {
-      const name = b.name || b;
-      const count = b.count || 1;
-      const countLabel = count === 1 ? '1 item' : `${count} items`;
-      return `
-        <a href="products.html?brand=${encodeURIComponent(name)}" class="brand-chip" title="Explore ${name}">
-          <span class="brand-chip-name">${name}</span>
-          <span class="brand-chip-count">${countLabel}</span>
-        </a>
-      `;
-    }).join('');
-  }
-
   // Attach card interaction listeners (Wishlist toggle & Add to Cart)
   if (allRenderedProducts.length > 0 && typeof attachEvents === 'function') {
     attachEvents(allRenderedProducts, document);
