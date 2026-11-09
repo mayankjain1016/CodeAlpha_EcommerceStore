@@ -26,7 +26,7 @@ function renderCartPage() {
         <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 24px;">
           Explore our top brands, hot deals, and popular categories to add items.
         </p>
-        <a href="products.html" class="btn-buy-now" style="display: inline-block; max-width: 180px; text-decoration: none;">
+        <a href="index.html" class="btn-buy-now" style="display: inline-block; max-width: 180px; text-decoration: none;">
           Shop Now
         </a>
       </div>

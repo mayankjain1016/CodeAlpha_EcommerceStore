@@ -19,16 +19,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static frontend files from /public directory with cache rules
-app.use(express.static(path.join(__dirname, 'public'), {
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.html')) {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-    } else if (filePath.endsWith('.css') || filePath.endsWith('.js')) {
-      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-    }
-  }
-}));
+// Serve static frontend files from /public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // API Routes
 app.use('/api/auth', authRoutes);

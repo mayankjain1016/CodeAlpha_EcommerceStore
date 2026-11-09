@@ -54,7 +54,7 @@ function renderOrdersList(orders) {
         <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">
           You haven't purchased anything yet. Browse our top electronics, fashion, and home deals!
         </p>
-        <a href="products.html" class="btn-buy-now" style="display: inline-block; max-width: 170px;">
+        <a href="index.html" class="btn-buy-now" style="display: inline-block; max-width: 170px;">
           Explore Store
         </a>
       </div>
@@ -65,7 +65,7 @@ function renderOrdersList(orders) {
   ordersContainer.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
       <h1 style="font-size: 20px; font-weight: 700; color: var(--text-main);">My Orders (${orders.length})</h1>
-      <a href="products.html" class="btn-add-cart" style="font-size: 12px; padding: 6px 14px; max-width: 140px;">Shop More</a>
+      <a href="index.html" class="btn-add-cart" style="font-size: 12px; padding: 6px 14px; max-width: 140px;">Shop More</a>
     </div>
 
     <div>

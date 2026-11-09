@@ -25,7 +25,7 @@ function initCheckout() {
         <div class="empty-cart-icon">${Icons.cart(64)}</div>
         <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">No Items to Checkout</h2>
         <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Your shopping cart is empty.</p>
-        <a href="products.html" class="btn-buy-now" style="display: inline-block; max-width: 180px;">Browse Catalog</a>
+        <a href="index.html" class="btn-buy-now" style="display: inline-block; max-width: 180px;">Browse Catalog</a>
       </div>
     `;
     return;
@@ -345,7 +345,7 @@ function renderSuccessScreen(order) {
         <a href="orders.html" class="btn-buy-now" style="display: inline-block; max-width: 170px;">
           View My Orders
         </a>
-        <a href="products.html" class="btn-add-cart" style="display: inline-block; max-width: 170px;">
+        <a href="index.html" class="btn-add-cart" style="display: inline-block; max-width: 170px;">
           Continue Shopping
         </a>
       </div>
