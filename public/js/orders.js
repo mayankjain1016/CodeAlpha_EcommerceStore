@@ -29,6 +29,13 @@ async function loadOrders() {
     renderOrdersList(orders);
   } catch (err) {
     console.error('Failed to load orders:', err);
+    if (err.status === 401) {
+      showToast('Your session has expired. Redirecting to login...', 'error');
+      setTimeout(() => {
+        window.location.href = 'login.html?next=orders.html';
+      }, 1200);
+      return;
+    }
     ordersContainer.innerHTML = `
       <div class="empty-cart-state">
         <h2 style="font-size: 18px; font-weight: 700; color: var(--danger); margin-bottom: 8px;">

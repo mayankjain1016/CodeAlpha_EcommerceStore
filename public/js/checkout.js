@@ -9,6 +9,37 @@
 
 const checkoutContainer = document.getElementById('checkout-page-content');
 
+const SAVED_ADDRESS_KEY = 'apex_saved_checkout_address';
+
+function getSavedAddress() {
+  try {
+    const raw = sessionStorage.getItem(SAVED_ADDRESS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveCurrentAddress() {
+  try {
+    const addressData = {
+      fullName: document.getElementById('ship-fullName')?.value || '',
+      phone: document.getElementById('ship-phone')?.value || '',
+      pincode: document.getElementById('ship-pincode')?.value || '',
+      address: document.getElementById('ship-address')?.value || '',
+      city: document.getElementById('ship-city')?.value || '',
+      state: document.getElementById('ship-state')?.value || ''
+    };
+    sessionStorage.setItem(SAVED_ADDRESS_KEY, JSON.stringify(addressData));
+  } catch (e) {}
+}
+
+function clearSavedAddress() {
+  try {
+    sessionStorage.removeItem(SAVED_ADDRESS_KEY);
+  } catch (e) {}
+}
+
 function initCheckout() {
   if (!checkoutContainer) return;
 
@@ -32,6 +63,7 @@ function initCheckout() {
   }
 
   const currentUser = Auth.getUser();
+  const savedAddress = getSavedAddress() || {};
   const priceDetails = (typeof Cart.calculateTotals === 'function') 
     ? Cart.calculateTotals() 
     : (typeof Cart.getCartPriceDetails === 'function' ? Cart.getCartPriceDetails() : { totalItems: cart.length, totalMrp: 0, subtotal: 0, discountAmount: 0, deliveryCharges: 0, grandTotal: 0, totalSavings: 0 });
@@ -70,7 +102,7 @@ function initCheckout() {
               id="ship-fullName" 
               class="form-input" 
               placeholder="e.g. Rahul Sharma" 
-              value="${escapeHTML(currentUser?.name || '')}" 
+              value="${escapeHTML(savedAddress.fullName || currentUser?.name || '')}" 
               required 
             />
             <div class="field-error-msg" id="err-ship-fullName">Please enter your full name</div>
@@ -85,6 +117,7 @@ function initCheckout() {
                 class="form-input" 
                 placeholder="10-digit mobile number" 
                 maxlength="10" 
+                value="${escapeHTML(savedAddress.phone || '')}" 
                 required 
               />
               <div class="field-error-msg" id="err-ship-phone">Please enter a valid 10-digit mobile number</div>
@@ -98,6 +131,7 @@ function initCheckout() {
                 class="form-input" 
                 placeholder="6-digit postal code" 
                 maxlength="6" 
+                value="${escapeHTML(savedAddress.pincode || '')}" 
                 required 
               />
               <div class="field-error-msg" id="err-ship-pincode">Please enter a valid 6-digit postal pincode</div>
@@ -112,20 +146,20 @@ function initCheckout() {
               rows="2" 
               placeholder="e.g. Flat 302, Palm Grove Apts, 100 Feet Road" 
               required
-            ></textarea>
+            >${escapeHTML(savedAddress.address || '')}</textarea>
             <div class="field-error-msg" id="err-ship-address">Please enter complete street address</div>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
             <div class="form-field-group">
               <label for="ship-city" class="form-label">City / District *</label>
-              <input type="text" id="ship-city" class="form-input" placeholder="e.g. Bengaluru" required />
+              <input type="text" id="ship-city" class="form-input" placeholder="e.g. Bengaluru" value="${escapeHTML(savedAddress.city || '')}" required />
               <div class="field-error-msg" id="err-ship-city">City is required</div>
             </div>
 
             <div class="form-field-group">
               <label for="ship-state" class="form-label">State *</label>
-              <input type="text" id="ship-state" class="form-input" placeholder="e.g. Karnataka" value="Karnataka" required />
+              <input type="text" id="ship-state" class="form-input" placeholder="e.g. Karnataka" value="${escapeHTML(savedAddress.state || 'Karnataka')}" required />
               <div class="field-error-msg" id="err-ship-state">State is required</div>
             </div>
           </div>
@@ -205,16 +239,22 @@ function attachCheckoutFormEvents() {
 
   if (!form) return;
 
-  const fields = ['fullName', 'phone', 'pincode', 'address', 'city'];
+  const fields = ['fullName', 'phone', 'pincode', 'address', 'city', 'state'];
 
-  // Input event clear errors
+  // Input event clear errors and auto-save form state to sessionStorage
   fields.forEach(field => {
     const input = document.getElementById(`ship-${field}`);
     const err = document.getElementById(`err-ship-${field}`);
-    if (input && err) {
+    if (input) {
       input.addEventListener('input', () => {
-        input.classList.remove('error');
-        err.classList.remove('visible');
+        if (err) {
+          input.classList.remove('error');
+          err.classList.remove('visible');
+        }
+        saveCurrentAddress();
+      });
+      input.addEventListener('change', () => {
+        saveCurrentAddress();
       });
     }
   });
@@ -224,26 +264,31 @@ function attachCheckoutFormEvents() {
 
     let isValid = true;
     const values = {};
+    const validateFields = ['fullName', 'phone', 'pincode', 'address', 'city'];
 
-    fields.forEach(field => {
+    validateFields.forEach(field => {
       const input = document.getElementById(`ship-${field}`);
       const err = document.getElementById(`err-ship-${field}`);
-      const val = input.value.trim();
+      const val = input ? input.value.trim() : '';
       values[field] = val;
 
       if (!val) {
-        input.classList.add('error');
-        err.classList.add('visible');
+        if (input) input.classList.add('error');
+        if (err) err.classList.add('visible');
         isValid = false;
       } else if (field === 'phone' && !/^\d{10}$/.test(val)) {
-        input.classList.add('error');
-        err.textContent = 'Enter a valid 10-digit mobile number';
-        err.classList.add('visible');
+        if (input) input.classList.add('error');
+        if (err) {
+          err.textContent = 'Enter a valid 10-digit mobile number';
+          err.classList.add('visible');
+        }
         isValid = false;
       } else if (field === 'pincode' && !/^\d{6}$/.test(val)) {
-        input.classList.add('error');
-        err.textContent = 'Enter a valid 6-digit pincode';
-        err.classList.add('visible');
+        if (input) input.classList.add('error');
+        if (err) {
+          err.textContent = 'Enter a valid 6-digit pincode';
+          err.classList.add('visible');
+        }
         isValid = false;
       }
     });
@@ -283,6 +328,9 @@ function attachCheckoutFormEvents() {
         body: orderPayload
       });
 
+      // Clear saved address from session
+      clearSavedAddress();
+
       // Clear shopping cart
       Cart.clearCart();
 
@@ -290,6 +338,14 @@ function attachCheckoutFormEvents() {
       renderSuccessScreen(response.order);
     } catch (err) {
       console.error('Order error:', err);
+      if (err.status === 401) {
+        saveCurrentAddress();
+        showToast('Your session has expired. Redirecting to login...', 'error');
+        setTimeout(() => {
+          window.location.href = 'login.html?next=checkout.html';
+        }, 1200);
+        return;
+      }
       showToast(err.message || 'Failed to place order. Check product stock.', 'error');
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalText;

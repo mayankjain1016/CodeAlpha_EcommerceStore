@@ -136,16 +136,52 @@ const AUTH_TOKEN_KEY = 'apex_auth_token';
 const AUTH_USER_KEY = 'apex_auth_user';
 
 const Auth = {
+  isTokenExpired(token) {
+    if (!token || typeof token !== 'string') return true;
+    try {
+      const sanitized = token.trim().replace(/^["']|["']$/g, '');
+      const parts = sanitized.split('.');
+      if (parts.length !== 3) return true;
+      const payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(payloadBase64)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const payload = JSON.parse(jsonPayload);
+      if (!payload || !payload.exp) return false;
+      const nowInSeconds = Math.floor(Date.now() / 1000);
+      return payload.exp <= nowInSeconds + 5;
+    } catch (e) {
+      return true;
+    }
+  },
   getToken() {
-    return storage.get(AUTH_TOKEN_KEY, null);
+    let token = storage.get(AUTH_TOKEN_KEY, null);
+    if (!token) return null;
+    if (typeof token === 'string') {
+      token = token.trim().replace(/^["']|["']$/g, '');
+    }
+    if (this.isTokenExpired(token)) {
+      this.clearAuth();
+      return null;
+    }
+    return token;
   },
   getUser() {
+    if (!this.getToken()) {
+      return null;
+    }
     return storage.get(AUTH_USER_KEY, null);
   },
   isLoggedIn() {
     return Boolean(this.getToken());
   },
   setAuth(token, user) {
+    if (typeof token === 'string') {
+      token = token.trim().replace(/^["']|["']$/g, '');
+    }
     storage.set(AUTH_TOKEN_KEY, token);
     storage.set(AUTH_USER_KEY, user);
   },
@@ -369,6 +405,13 @@ async function api(endpoint, options = {}) {
     }
 
     if (!response.ok) {
+      if (response.status === 401) {
+        // Clear invalid or expired credentials immediately
+        Auth.clearAuth();
+        if (typeof renderGlobalHeader === 'function') {
+          try { renderGlobalHeader(); } catch (e) {}
+        }
+      }
       const errorMessage = (data && (data.error || data.message)) || `Server returned status ${response.status}`;
       const err = new Error(errorMessage);
       err.status = response.status;

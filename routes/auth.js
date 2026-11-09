@@ -2,10 +2,9 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { getJwtSecret } = require('../config/jwt');
 
 const router = express.Router();
-
-const getJwtSecret = () => process.env.JWT_SECRET || 'super_secret_jwt_key_ecommerce_2025_change_in_production';
 
 // POST /api/auth/register
 router.post('/register', async (req, res, next) => {
@@ -49,7 +48,7 @@ router.post('/register', async (req, res, next) => {
     const token = jwt.sign(
       { id: user._id, name: user.name, email: user.email },
       getJwtSecret(),
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
     );
 
     res.status(201).json({
@@ -89,7 +88,7 @@ router.post('/login', async (req, res, next) => {
     const token = jwt.sign(
       { id: user._id, name: user.name, email: user.email },
       getJwtSecret(),
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
     );
 
     res.json({
