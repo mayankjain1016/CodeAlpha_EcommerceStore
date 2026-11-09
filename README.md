@@ -61,13 +61,17 @@ Hosted on a free tier, the first load may take up to a minute.
 - **Category Strip**: Navigation strip with active state tracking across Home, All Categories, Electronics, Fashion, Home & Kitchen, and Sports & Fitness.
 - **Hero Carousel**: 3 promotional banners, automatic 5-second rotation, pause on hover, navigation arrows, and dot indicators linking to active categories.
 - **Category Visual Tiles**: 4 quick-jump cards featuring curated photography and discount highlights.
-- **Deal of the Day**: Horizontal scroll row of top-discounted products with live countdown timer to midnight local time.
+- **Quick Links Navigation Strip**: Pill-based jump links under hero for Today's Deals, Under ₹499, Under ₹999, 4.5★ & Above, Premium Picks, and New Arrivals.
+- **Deal of the Day**: Auto-sliding row of top-discounted products with live countdown timer to midnight local time and low-stock warning indicators ("Only N left").
+- **Budget Picks (Under ₹999)**: Auto-sliding row of verified quality everyday essentials.
 - **Shop by Category Blocks**: 4 multi-product 2x2 grid blocks (Electronics, Fashion, Home & Kitchen, Sports & Fitness) with direct links and category CTAs.
-- **Curated Scroll Rows**: Top Rated (4.4★+), New Arrivals, and Best Sellers with smooth desktop arrow scrolling and mobile touch swipe.
+- **Top Rated Products (4.4★+)**: Auto-sliding row of highest customer-rated items.
+- **Premium Collection (₹4,999+)**: Auto-sliding row of flagship tech and luxury essentials.
+- **New Arrivals & Best Sellers**: Auto-sliding rows sorted by newest additions and customer review volume.
+- **Auto-Sliding Sliders**: All product rows smoothly auto-slide one card every 3.5 seconds with seamless looping, pause on hover/focus/touch, tab visibility pause, and respect for `prefers-reduced-motion`.
 - **Recently Viewed**: Persistent history tracked in `localStorage` across visited product pages with one-click clear history.
 - **Dual Promo Banners**: Budget Store ("Under ₹999") and Flagship Gear ("Top Rated 4.5★") with brand color gradients and product previews.
-- **Brand Strip**: Clickable pill chips for all catalog brands linking directly to filtered product search.
-- **Trust Badges Row**: 4 core guarantees (Free delivery > ₹499, Cash on Delivery, 7-day hassle-free returns, 100% genuine products).
+- **Featured Brands**: Authentic brands with real product count badges, linking to brand-filtered catalog listings.
 
 ### Dedicated Catalog Listing (products.html)
 - Multi-field search and query synchronization.
@@ -206,8 +210,8 @@ EcommerceStore/
 | :--- | :--- | :---: | :--- |
 | `POST` | `/api/auth/register` | No | Register new user. Returns JWT token & user object. |
 | `POST` | `/api/auth/login` | No | Login user. Returns JWT token & user object. |
-| `GET` | `/api/products/home` | No | Aggregated home payload: `{ deals, topRated, newArrivals, bestSellers, categoryBlocks, brands }` (cached 60s). |
-| `GET` | `/api/products` | No | Query params: `search`, `category`, `sort` (`relevance`, `discount`, `rating`, `reviewCount`, `newest`, `price-low-high`, `price-high-low`), `minPrice`, `maxPrice`, `minRating`, `inStock`, `ids`, `page`, `limit`. Returns `{ products, total, page, pages }`. |
+| `GET` | `/api/products/home` | No | Aggregated home payload: `{ deals, budgetPicks, premiumPicks, topRated, newArrivals, bestSellers, categoryBlocks, brands }` (cached 60s). |
+| `GET` | `/api/products` | No | Query params: `search`, `brand`, `category`, `sort` (`relevance`, `discount`, `rating`, `reviewCount`, `newest`, `price-low-high`, `price-high-low`), `minPrice`, `maxPrice`, `minRating`, `inStock`, `ids`, `page`, `limit`. Returns `{ products, total, page, pages }`. |
 | `GET` | `/api/products/:id` | No | Get single product by ID. Returns product with `relatedProducts`. |
 | `POST` | `/api/orders` | **Yes** | Place a new order with atomic stock reduction & automatic rollback. |
 | `GET` | `/api/orders/my` | **Yes** | Retrieve all orders placed by authenticated user (newest first). |
