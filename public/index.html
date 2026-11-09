@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ApexStore | India's Online Marketplace for Electronics, Fashion, Home & Sports</title>
   <meta name="description" content="Shop millions of products at ApexStore. Genuine electronics, trending fashion, home appliances & sports gear with Cash on Delivery and free delivery.">
-  <link rel="stylesheet" href="css/style.css?v=2.0">
+  <link rel="stylesheet" href="css/style.css?v=2.1">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%232874f0%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><circle cx=%229%22 cy=%2221%22 r=%221%22/><circle cx=%2220%22 cy=%2221%22 r=%221%22/><path d=%22M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6%22/></svg>">
 </head>
 <body>
@@ -67,7 +67,24 @@
         </div>
       </section>
 
-      <!-- 2. Category Visual Tiles -->
+      <!-- 2. Quick Links Strip -->
+      <section class="quick-links-strip" aria-label="Quick Navigation">
+        <div class="quick-links-wrap">
+          <a href="#section-deal-of-the-day" class="quick-link-pill pill-hot">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.784 1.399 8.169-7.333-3.856-7.333 3.856 1.399-8.169-5.934-5.784 8.2-1.192z"/></svg>
+            Today's Deals
+          </a>
+          <a href="products.html?maxPrice=499" class="quick-link-pill">Under ₹499</a>
+          <a href="#section-budget-picks" class="quick-link-pill">Under ₹999</a>
+          <a href="products.html?minRating=4.5" class="quick-link-pill">4.5★ &amp; Above</a>
+          <a href="#section-premium-picks" class="quick-link-pill pill-premium">Premium (₹4,999+)</a>
+          <a href="#section-new-arrivals" class="quick-link-pill">New Arrivals</a>
+          <a href="#section-best-sellers" class="quick-link-pill">Best Sellers</a>
+          <a href="products.html" class="quick-link-pill pill-all">All Products &rarr;</a>
+        </div>
+      </section>
+
+      <!-- 3. Category Visual Exploration Tiles -->
       <section class="category-tiles-row" aria-label="Popular Categories">
         <a href="products.html?category=Electronics" class="category-tile-card">
           <img src="images/categories/electronics.jpg" alt="Electronics" class="category-tile-img" loading="lazy" />
@@ -79,27 +96,27 @@
         <a href="products.html?category=Fashion" class="category-tile-card">
           <img src="images/categories/fashion.jpg" alt="Fashion" class="category-tile-img" loading="lazy" />
           <div>
-            <div class="category-tile-title">Fashion & Apparel</div>
+            <div class="category-tile-title">Fashion &amp; Apparel</div>
             <div class="category-tile-sub">Min 50% Off</div>
           </div>
         </a>
         <a href="products.html?category=Home" class="category-tile-card">
           <img src="images/categories/home.jpg" alt="Home & Kitchen" class="category-tile-img" loading="lazy" />
           <div>
-            <div class="category-tile-title">Home & Kitchen</div>
+            <div class="category-tile-title">Home &amp; Kitchen</div>
             <div class="category-tile-sub">From ₹899</div>
           </div>
         </a>
         <a href="products.html?category=Sports" class="category-tile-card">
           <img src="images/categories/sports.jpg" alt="Sports & Fitness" class="category-tile-img" loading="lazy" />
           <div>
-            <div class="category-tile-title">Sports & Fitness</div>
+            <div class="category-tile-title">Sports &amp; Fitness</div>
             <div class="category-tile-sub">Trending Gear</div>
           </div>
         </a>
       </section>
 
-      <!-- 3. Deal of the Day (Countdown Timer + Scroll Row) -->
+      <!-- 4. Deal of the Day (Countdown Timer + Auto-sliding Slider) -->
       <section class="home-scroll-section" id="section-deal-of-the-day" aria-label="Deal of the Day">
         <div class="home-section-header">
           <div class="home-section-title-wrap">
@@ -120,7 +137,7 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <div class="products-scroll-row" id="deals-products-row">
-            <!-- Skeleton cards while loading -->
+            <!-- Skeleton or products populated by JS -->
           </div>
           <button class="row-scroll-arrow next" data-target="deals-products-row" aria-label="Scroll right">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
@@ -128,23 +145,48 @@
         </div>
       </section>
 
-      <!-- 4. Shop by Category (Multi-Block 2x2 Grid) -->
-      <section class="home-cat-blocks-section" id="section-category-blocks" aria-label="Shop by Category">
+      <!-- 5. Budget Picks (Under Rs 999) -->
+      <section class="home-scroll-section" id="section-budget-picks" aria-label="Budget Picks Under 999">
         <div class="home-section-header">
-          <h2 class="home-section-title">Shop by Category</h2>
-          <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Curated essentials across our top collections</span>
+          <div>
+            <h2 class="home-section-title">Budget Picks | Under ₹999</h2>
+            <div style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Pocket-friendly daily essentials with verified quality</div>
+          </div>
+          <a href="products.html?maxPrice=999" class="home-section-see-all">See All Under ₹999 &rarr;</a>
         </div>
-        <div class="category-blocks-grid" id="category-blocks-container">
-          <!-- Populated by index.js -->
+        <div class="home-scroll-wrapper">
+          <button class="row-scroll-arrow prev" data-target="budget-products-row" aria-label="Scroll left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="products-scroll-row" id="budget-products-row">
+            <!-- Populated by JS -->
+          </div>
+          <button class="row-scroll-arrow next" data-target="budget-products-row" aria-label="Scroll right">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
         </div>
       </section>
 
-      <!-- 5. Top Rated Products (Rating 4.4+) -->
+      <!-- 6. Shop by Category (Multi-Block 2x2 Grid) -->
+      <section class="home-cat-blocks-section" id="section-category-blocks" aria-label="Shop by Category">
+        <div class="home-section-header">
+          <div>
+            <h2 class="home-section-title">Shop by Category</h2>
+            <div style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Curated essentials across our top collections</div>
+          </div>
+          <a href="products.html" class="home-section-see-all">Explore All &rarr;</a>
+        </div>
+        <div class="category-blocks-grid" id="category-blocks-container">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- 7. Top Rated Products (Rating 4.4+) -->
       <section class="home-scroll-section" id="section-top-rated" aria-label="Top Rated Products">
         <div class="home-section-header">
           <div>
             <h2 class="home-section-title">Top Rated Products</h2>
-            <div style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Highest rated by verified Indian customers (4.4★ & above)</div>
+            <div style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Highest rated by verified Indian customers (4.4★ &amp; above)</div>
           </div>
           <a href="products.html?minRating=4.4&sort=rating" class="home-section-see-all">See All Top Rated &rarr;</a>
         </div>
@@ -153,7 +195,7 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <div class="products-scroll-row" id="top-rated-products-row">
-            <!-- Populated by index.js -->
+            <!-- Populated by JS -->
           </div>
           <button class="row-scroll-arrow next" data-target="top-rated-products-row" aria-label="Scroll right">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
@@ -161,14 +203,35 @@
         </div>
       </section>
 
-      <!-- 6. Two Promo Banners (Under 999 & Pro Gear) -->
+      <!-- 8. Premium Picks (Above Rs 4,999) -->
+      <section class="home-scroll-section" id="section-premium-picks" aria-label="Premium Picks">
+        <div class="home-section-header">
+          <div>
+            <h2 class="home-section-title">Premium Collection | Flagship Tech &amp; Style</h2>
+            <div style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Top-tier audio, workstation displays, smartwatches &amp; designer accessories</div>
+          </div>
+          <a href="products.html?minPrice=4999" class="home-section-see-all">See All Premium &rarr;</a>
+        </div>
+        <div class="home-scroll-wrapper">
+          <button class="row-scroll-arrow prev" data-target="premium-products-row" aria-label="Scroll left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="products-scroll-row" id="premium-products-row">
+            <!-- Populated by JS -->
+          </div>
+          <button class="row-scroll-arrow next" data-target="premium-products-row" aria-label="Scroll right">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- 9. Two Promo Banners (Under 999 & Flagship Gear) -->
       <section class="home-promo-banners-row" aria-label="Curated Stores">
-        <!-- Banner 1: Under 999 -->
         <a href="products.html?maxPrice=999" class="promo-banner-card banner-budget">
           <div class="promo-banner-content">
             <span class="promo-banner-tag">VALUE ZONE</span>
             <h3 class="promo-banner-heading">Under ₹999 Store</h3>
-            <p class="promo-banner-desc">Everyday essentials, cotton polos, yoga mats & workout accessories.</p>
+            <p class="promo-banner-desc">Everyday essentials, cotton polos, yoga mats &amp; workout accessories.</p>
             <span class="promo-banner-btn">Shop Under ₹999 &rarr;</span>
           </div>
           <div class="promo-banner-thumbs">
@@ -177,12 +240,11 @@
           </div>
         </a>
 
-        <!-- Banner 2: Pro Grade & Flagship Gear -->
         <a href="products.html?minRating=4.5" class="promo-banner-card banner-flagship">
           <div class="promo-banner-content">
             <span class="promo-banner-tag flagship-tag">4.5★ RATED</span>
-            <h3 class="promo-banner-heading">Flagship & Pro Gear</h3>
-            <p class="promo-banner-desc">Industry-leading headphones, 4K displays & luxury watches.</p>
+            <h3 class="promo-banner-heading">Flagship &amp; Pro Gear</h3>
+            <p class="promo-banner-desc">Industry-leading noise cancelling headphones, 4K displays &amp; luxury watches.</p>
             <span class="promo-banner-btn">Explore 4.5★ Gear &rarr;</span>
           </div>
           <div class="promo-banner-thumbs">
@@ -192,7 +254,7 @@
         </a>
       </section>
 
-      <!-- 7. New Arrivals -->
+      <!-- 10. New Arrivals -->
       <section class="home-scroll-section" id="section-new-arrivals" aria-label="New Arrivals">
         <div class="home-section-header">
           <div>
@@ -206,7 +268,7 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <div class="products-scroll-row" id="new-arrivals-products-row">
-            <!-- Populated by index.js -->
+            <!-- Populated by JS -->
           </div>
           <button class="row-scroll-arrow next" data-target="new-arrivals-products-row" aria-label="Scroll right">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
@@ -214,7 +276,7 @@
         </div>
       </section>
 
-      <!-- 8. Best Sellers -->
+      <!-- 11. Best Sellers -->
       <section class="home-scroll-section" id="section-best-sellers" aria-label="Best Sellers">
         <div class="home-section-header">
           <div>
@@ -228,7 +290,7 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <div class="products-scroll-row" id="best-sellers-products-row">
-            <!-- Populated by index.js -->
+            <!-- Populated by JS -->
           </div>
           <button class="row-scroll-arrow next" data-target="best-sellers-products-row" aria-label="Scroll right">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
@@ -236,21 +298,21 @@
         </div>
       </section>
 
-      <!-- 9. Recently Viewed (Hidden if empty in localStorage) -->
+      <!-- 12. Recently Viewed (Hidden if empty) -->
       <section class="home-scroll-section" id="section-recently-viewed" style="display: none;" aria-label="Recently Viewed Products">
         <div class="home-section-header">
           <div>
             <h2 class="home-section-title">Recently Viewed</h2>
             <div style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Pick up right where you left off</div>
           </div>
-          <button id="clear-recent-history-btn" class="home-section-clear-btn">Clear History</button>
+          <button id="clear-recent-history-btn" class="home-section-clear-btn" type="button">Clear History</button>
         </div>
         <div class="home-scroll-wrapper">
           <button class="row-scroll-arrow prev" data-target="recently-viewed-products-row" aria-label="Scroll left">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <div class="products-scroll-row" id="recently-viewed-products-row">
-            <!-- Populated by index.js if history exists -->
+            <!-- Populated by JS -->
           </div>
           <button class="row-scroll-arrow next" data-target="recently-viewed-products-row" aria-label="Scroll right">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
@@ -258,57 +320,16 @@
         </div>
       </section>
 
-      <!-- 10. Featured Brands Strip -->
+      <!-- 13. Featured Brands (Real brands with product counts) -->
       <section class="home-brands-section" id="section-brands" aria-label="Featured Brands">
         <div class="home-section-header" style="margin-bottom: 12px;">
-          <h2 class="home-section-title">Featured Brands</h2>
-          <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Authentic items from leading Indian & global manufacturers</span>
+          <div>
+            <h2 class="home-section-title">Featured Brands</h2>
+            <div style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Explore collections directly by verified manufacturer</div>
+          </div>
         </div>
         <div class="brand-chips-wrap" id="brand-chips-container">
-          <!-- Populated by index.js with real brands -->
-        </div>
-      </section>
-
-      <!-- 11. Trust Badges Row -->
-      <section class="home-trust-badges-card" aria-label="ApexStore Guarantees">
-        <div class="trust-badge-item">
-          <div class="trust-badge-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-          </div>
-          <div>
-            <div class="trust-badge-title">Free Express Delivery</div>
-            <div class="trust-badge-sub">On all orders above ₹499 across India</div>
-          </div>
-        </div>
-
-        <div class="trust-badge-item">
-          <div class="trust-badge-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          </div>
-          <div>
-            <div class="trust-badge-title">Cash on Delivery</div>
-            <div class="trust-badge-sub">Pay securely at your doorstep via cash or UPI</div>
-          </div>
-        </div>
-
-        <div class="trust-badge-item">
-          <div class="trust-badge-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-          </div>
-          <div>
-            <div class="trust-badge-title">7-Day Easy Returns</div>
-            <div class="trust-badge-sub">Hassle-free doorstep pickup & quick refund</div>
-          </div>
-        </div>
-
-        <div class="trust-badge-item">
-          <div class="trust-badge-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
-          <div>
-            <div class="trust-badge-title">100% Genuine Products</div>
-            <div class="trust-badge-sub">Directly sourced from authorized brand distributors</div>
-          </div>
+          <!-- Populated with real brands & counts by JS -->
         </div>
       </section>
 
@@ -319,7 +340,7 @@
   <footer id="main-footer" class="site-footer"></footer>
 
   <!-- Scripts -->
-  <script src="js/common.js?v=2.0"></script>
-  <script src="js/index.js?v=2.0"></script>
+  <script src="js/common.js?v=2.1"></script>
+  <script src="js/index.js?v=2.1"></script>
 </body>
 </html>

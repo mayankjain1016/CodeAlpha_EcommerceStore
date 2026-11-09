@@ -10,6 +10,7 @@ let currentCatalogState = {
   page: 1,
   limit: 12,
   category: 'All',
+  brand: '',
   search: '',
   sort: 'relevance',
   minPrice: '',
@@ -33,7 +34,9 @@ async function fetchCatalog() {
 
   // Update Breadcrumb Text
   if (breadcrumbCategory) {
-    if (currentCatalogState.category && currentCatalogState.category !== 'All') {
+    if (currentCatalogState.brand) {
+      breadcrumbCategory.textContent = `Brand: ${currentCatalogState.brand}`;
+    } else if (currentCatalogState.category && currentCatalogState.category !== 'All') {
       breadcrumbCategory.textContent = currentCatalogState.category;
     } else if (currentCatalogState.search) {
       breadcrumbCategory.textContent = `Search: "${currentCatalogState.search}"`;
@@ -60,6 +63,9 @@ async function fetchCatalog() {
 
     if (currentCatalogState.category && currentCatalogState.category !== 'All') {
       params.append('category', currentCatalogState.category);
+    }
+    if (currentCatalogState.brand) {
+      params.append('brand', currentCatalogState.brand);
     }
     if (currentCatalogState.search) {
       params.append('search', currentCatalogState.search);
@@ -361,12 +367,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Read URL parameters if present
   const urlParams = new URLSearchParams(window.location.search);
   const catParam = urlParams.get('category');
+  const brandParam = urlParams.get('brand');
   const searchParam = urlParams.get('search');
   const sortParam = urlParams.get('sort');
   const minPriceParam = urlParams.get('minPrice');
   const maxPriceParam = urlParams.get('maxPrice');
   const minRatingParam = urlParams.get('minRating');
   const inStockParam = urlParams.get('inStock');
+
+  if (brandParam) {
+    currentCatalogState.brand = brandParam;
+  }
 
   if (catParam) {
     currentCatalogState.category = catParam;

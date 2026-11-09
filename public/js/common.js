@@ -902,3 +902,18 @@ document.addEventListener('DOMContentLoaded', () => {
   Cart.updateCartBadge();
   Wishlist.updateUI();
 });
+
+// Expose ApexStore namespace for modules & scripts
+window.Apex = {
+  renderProductCard,
+  formatPrice,
+  attachCardEvents,
+  RecentlyViewed,
+  showToast,
+  api,
+  Icons,
+  Cart,
+  Wishlist,
+  escapeHTML,
+  Auth
+};

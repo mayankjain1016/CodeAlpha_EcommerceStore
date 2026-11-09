@@ -2752,6 +2752,77 @@ button {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
+/* Quick Links Strip */
+.quick-links-strip {
+  margin-bottom: 20px;
+}
+
+.quick-links-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.quick-links-wrap::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-link-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+  box-shadow: var(--shadow-xs);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.quick-link-pill:hover {
+  background: var(--primary-subtle);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.quick-link-pill.pill-hot {
+  background: #fff1f0;
+  border-color: #ffccc7;
+  color: #cf1322;
+}
+
+.quick-link-pill.pill-hot:hover {
+  background: #ffe8e6;
+  border-color: #ff7875;
+}
+
+.quick-link-pill.pill-premium {
+  background: #f6f0ff;
+  border-color: #d3adf7;
+  color: #531dab;
+}
+
+.quick-link-pill.pill-premium:hover {
+  background: #efdbff;
+  border-color: #b37feb;
+}
+
+.quick-link-pill.pill-all {
+  margin-left: auto;
+  color: var(--primary);
+  font-weight: 700;
+}
+
 /* Real Brand Strip Chips */
 .brand-chips-wrap {
   display: flex;
@@ -2763,13 +2834,14 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: #fafafa;
+  padding: 7px 14px;
+  background: white;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-full);
   font-size: 12px;
   font-weight: 600;
   color: var(--text-main);
+  box-shadow: var(--shadow-xs);
   transition: all var(--transition-fast);
 }
 
@@ -2778,58 +2850,53 @@ button {
   border-color: var(--primary);
   color: var(--primary);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
 }
 
-.brand-chip-explore {
+.brand-chip-name {
+  font-weight: 700;
+  color: inherit;
+}
+
+.brand-chip-count {
   font-size: 11px;
-  color: var(--text-muted);
-}
-
-/* Home Trust Badges Card */
-.home-trust-badges-card {
-  background: white;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 20px 24px;
-  margin-bottom: 24px;
-  box-shadow: var(--shadow-xs);
-}
-
-.home-trust-badges-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-}
-
-.trust-badge-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.trust-badge-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
   background: var(--primary-subtle);
   color: var(--primary);
+}
+
+/* Home Section Error Pill with Small Retry Button */
+.home-section-error-pill {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-.trust-badge-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-main);
-  margin-bottom: 2px;
-}
-
-.trust-badge-sub {
-  font-size: 11px;
+  gap: 14px;
+  padding: 30px 20px;
+  width: 100%;
+  background: #fafafa;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.btn-section-retry {
+  padding: 5px 14px;
+  background: var(--primary);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-xs);
+  transition: background var(--transition-fast);
+  cursor: pointer;
+  border: none;
+}
+
+.btn-section-retry:hover {
+  background: var(--primary-hover);
 }
 
 /* Responsive Rules for New Home Page Elements */
@@ -2842,11 +2909,6 @@ button {
 @media (max-width: 900px) {
   .home-promo-banners-row {
     grid-template-columns: 1fr;
-  }
-
-  .home-trust-badges-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
   }
 }
 
@@ -2868,11 +2930,6 @@ button {
   .home-section-title-wrap {
     width: 100%;
     justify-content: space-between;
-  }
-
-  .home-trust-badges-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
   }
 
   .promo-banner-thumbs {

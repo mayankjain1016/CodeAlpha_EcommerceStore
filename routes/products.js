@@ -31,22 +31,32 @@ router.get('/home', async (req, res, next) => {
       { $limit: 10 }
     ]);
 
-    // 2. Top rated products (rating 4.4+)
+    // 2. Budget picks (under Rs 999)
+    const budgetPicks = await Product.find({ price: { $lte: 999, $gt: 0 } })
+      .sort({ rating: -1, reviewCount: -1 })
+      .limit(10);
+
+    // 3. Premium picks (above Rs 4,999)
+    const premiumPicks = await Product.find({ price: { $gte: 4999 } })
+      .sort({ rating: -1, reviewCount: -1 })
+      .limit(10);
+
+    // 4. Top rated products (rating 4.4+)
     const topRated = await Product.find({ rating: { $gte: 4.4 } })
       .sort({ rating: -1, reviewCount: -1 })
       .limit(10);
 
-    // 3. New arrivals
+    // 5. New arrivals
     const newArrivals = await Product.find({})
       .sort({ createdAt: -1 })
       .limit(10);
 
-    // 4. Best sellers (sorted by reviewCount)
+    // 6. Best sellers (sorted by reviewCount)
     const bestSellers = await Product.find({})
       .sort({ reviewCount: -1, rating: -1 })
       .limit(10);
 
-    // 5. Category 2x2 blocks for 4 main categories
+    // 7. Category 2x2 blocks for 4 main categories
     const categories = ['Electronics', 'Fashion', 'Home', 'Sports'];
     const categoryBlocks = await Promise.all(
       categories.map(async (catName) => {
@@ -74,13 +84,18 @@ router.get('/home', async (req, res, next) => {
       })
     );
 
-    // 6. Real brands in the catalog
-    const brands = await Product.distinct('brand');
-    brands.sort((a, b) => a.localeCompare(b));
+    // 8. Real brands with product counts
+    const brandAgg = await Product.aggregate([
+      { $group: { _id: '$brand', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+    const brands = brandAgg.map(b => ({ name: b._id, count: b.count }));
 
     res.set('Cache-Control', 'public, max-age=60');
     res.json({
       deals,
+      budgetPicks,
+      premiumPicks,
       topRated,
       newArrivals,
       bestSellers,
@@ -93,11 +108,12 @@ router.get('/home', async (req, res, next) => {
 });
 
 // GET /api/products
-// Query params: search, category, sort, minPrice, maxPrice, minRating, inStock, ids, page, limit
+// Query params: search, brand, category, sort, minPrice, maxPrice, minRating, inStock, ids, page, limit
 router.get('/', async (req, res, next) => {
   try {
     const {
       search,
+      brand,
       category,
       sort,
       minPrice,
@@ -120,6 +136,11 @@ router.get('/', async (req, res, next) => {
       if (idList.length > 0) {
         filter._id = { $in: idList };
       }
+    }
+
+    // Brand filter
+    if (brand && typeof brand === 'string' && brand.trim() && brand.trim().toLowerCase() !== 'all') {
+      filter.brand = new RegExp(`^${escapeRegex(brand.trim())}$`, 'i');
     }
 
     // Category filter
