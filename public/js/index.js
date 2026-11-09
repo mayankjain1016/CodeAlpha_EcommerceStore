@@ -1,27 +1,32 @@
 /**
  * ApexStore - index.js
- * Catalog Home: Hero Carousel (auto 5s, arrows, dots, hover pause),
- * Top Deals Horizontal Scroll, Category Tiles, Filter Sidebar & Drawer,
- * Sort Dropdown, Product Cards with Wishlist & Hover Add-to-Cart, Pagination.
+ * Home Page Controller:
+ * 1. Hero Carousel (5s auto-slide, arrows, dots, hover/touch/visibility pause, reduced-motion check)
+ * 2. Deal of the Day Midnight Countdown Timer (updates every second, resets at midnight)
+ * 3. Modular Horizontal Auto-Sliders (3.5s per card, loop, hover/touch/visibility pause, reduced-motion check)
+ * 4. Resilient per-section data rendering with isolated retry buttons
+ * 5. Real Featured Brands with authentic product counts linking to ?brand=...
+ * 6. Recently Viewed Products (localStorage apex_recently_viewed) with clean history toggle
  */
 
-// State Management
-let currentCatalogState = {
-  page: 1,
-  limit: 12,
-  category: 'All',
-  search: '',
-  sort: 'relevance',
-  minPrice: '',
-  maxPrice: '',
-  minRating: '',
-  inStock: false,
-  total: 0,
-  pages: 1
-};
+document.addEventListener('DOMContentLoaded', () => {
+  initHeroCarousel();
+  initDealCountdown();
+  loadHomePageData();
+  loadRecentlyViewed();
+});
+
+// Helper: safe access to global / window.Apex methods
+const getHelpers = () => ({
+  renderCard: (typeof renderProductCard === 'function') ? renderProductCard : (window.Apex && window.Apex.renderProductCard),
+  formatMoney: (typeof formatPrice === 'function') ? formatPrice : (window.Apex && window.Apex.formatPrice),
+  attachEvents: (typeof attachCardEvents === 'function') ? attachCardEvents : (window.Apex && window.Apex.attachCardEvents),
+  recentViewed: (typeof RecentlyViewed !== 'undefined') ? RecentlyViewed : (window.Apex && window.Apex.RecentlyViewed),
+  toast: (typeof showToast === 'function') ? showToast : (window.Apex && window.Apex.showToast)
+});
 
 // ==========================================================================
-// 1. Hero Carousel Controller
+// 1. Hero Carousel Controller (Auto 5s)
 // ==========================================================================
 function initHeroCarousel() {
   const track = document.getElementById('carousel-track');
@@ -33,31 +38,43 @@ function initHeroCarousel() {
 
   if (!track || slides.length === 0) return;
 
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let currentIndex = 0;
   let autoTimer = null;
+  let isPaused = false;
   const slideCount = slides.length;
 
-  // Create dot buttons
+  // Build Dots
   if (dotsContainer) {
     dotsContainer.innerHTML = '';
     slides.forEach((_, idx) => {
       const dot = document.createElement('button');
       dot.className = `carousel-dot ${idx === 0 ? 'active' : ''}`;
       dot.setAttribute('aria-label', `Slide ${idx + 1}`);
-      dot.addEventListener('click', () => goToSlide(idx));
+      dot.addEventListener('click', () => {
+        goToSlide(idx);
+        restartTimer();
+      });
       dotsContainer.appendChild(dot);
     });
   }
 
   function updateDots() {
-    const dots = document.querySelectorAll('.carousel-dot');
+    if (!dotsContainer) return;
+    const dots = dotsContainer.querySelectorAll('.carousel-dot');
     dots.forEach((dot, idx) => {
       dot.classList.toggle('active', idx === currentIndex);
     });
   }
 
   function goToSlide(index) {
-    currentIndex = (index + slideCount) % slideCount;
+    if (index < 0) {
+      currentIndex = slideCount - 1;
+    } else if (index >= slideCount) {
+      currentIndex = 0;
+    } else {
+      currentIndex = index;
+    }
     track.style.transform = `translateX(-${currentIndex * 100}%)`;
     updateDots();
   }
@@ -70,495 +87,531 @@ function initHeroCarousel() {
     goToSlide(currentIndex - 1);
   }
 
-  if (nextBtn) nextBtn.addEventListener('click', nextSlide);
-  if (prevBtn) prevBtn.addEventListener('click', prevSlide);
+  if (nextBtn) {
+    nextBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      nextSlide();
+      restartTimer();
+    });
+  }
 
-  // Auto-play every 5 seconds
-  function startAuto() {
-    stopAuto();
+  if (prevBtn) {
+    prevBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      prevSlide();
+      restartTimer();
+    });
+  }
+
+  function startTimer() {
+    if (prefersReduced || autoTimer || isPaused || document.hidden) return;
     autoTimer = setInterval(nextSlide, 5000);
   }
 
-  function stopAuto() {
-    if (autoTimer) clearInterval(autoTimer);
+  function stopTimer() {
+    if (autoTimer) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+    }
   }
 
-  startAuto();
+  function restartTimer() {
+    stopTimer();
+    startTimer();
+  }
 
-  // Pause on hover
   if (section) {
-    section.addEventListener('mouseenter', stopAuto);
-    section.addEventListener('mouseleave', startAuto);
+    section.addEventListener('mouseenter', () => {
+      isPaused = true;
+      stopTimer();
+    });
+    section.addEventListener('mouseleave', () => {
+      isPaused = false;
+      startTimer();
+    });
+    section.addEventListener('focusin', () => {
+      isPaused = true;
+      stopTimer();
+    });
+    section.addEventListener('focusout', () => {
+      isPaused = false;
+      startTimer();
+    });
+    section.addEventListener('touchstart', () => {
+      isPaused = true;
+      stopTimer();
+    }, { passive: true });
+    section.addEventListener('touchend', () => {
+      setTimeout(() => {
+        isPaused = false;
+        startTimer();
+      }, 3000);
+    }, { passive: true });
   }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopTimer();
+    } else if (!isPaused) {
+      startTimer();
+    }
+  });
+
+  startTimer();
 }
 
 // ==========================================================================
-// 2. "Top Deals" Strip Loader
+// 2. Deal Countdown Timer (Midnight Local Time)
 // ==========================================================================
-async function loadTopDeals() {
-  const dealsContainer = document.getElementById('top-deals-container');
-  if (!dealsContainer) return;
+function initDealCountdown() {
+  const hoursEl = document.getElementById('cd-hours');
+  const minsEl = document.getElementById('cd-mins');
+  const secsEl = document.getElementById('cd-secs');
 
-  try {
-    const res = await api('/api/products?limit=8&sort=newest');
-    const products = res.products || [];
+  if (!hoursEl || !minsEl || !secsEl) return;
 
-    // Filter products with good discount
-    const discounted = products.filter(p => p.mrp > p.price);
+  function updateTimer() {
+    const now = new Date();
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 0);
 
-    if (discounted.length === 0) {
-      dealsContainer.parentElement.style.display = 'none';
+    const diffMs = midnight.getTime() - now.getTime();
+    if (diffMs <= 0) {
+      hoursEl.textContent = '23';
+      minsEl.textContent = '59';
+      secsEl.textContent = '59';
       return;
     }
 
-    dealsContainer.innerHTML = discounted.map(p => {
-      const discountPct = Math.round(((p.mrp - p.price) / p.mrp) * 100);
+    const totalSecs = Math.floor(diffMs / 1000);
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+
+    hoursEl.textContent = String(hrs).padStart(2, '0');
+    minsEl.textContent = String(mins).padStart(2, '0');
+    secsEl.textContent = String(secs).padStart(2, '0');
+  }
+
+  updateTimer();
+  setInterval(updateTimer, 1000);
+}
+
+// ==========================================================================
+// 3. Auto-Sliding Horizontal Row Controller (3.5s per card, loop, pause)
+// ==========================================================================
+const registeredSliders = new Map();
+
+function initAutoSlider(rowId) {
+  const rowElement = document.getElementById(rowId);
+  if (!rowElement) return;
+
+  // Clean up any existing slider on this row
+  if (registeredSliders.has(rowId)) {
+    registeredSliders.get(rowId).stop();
+  }
+
+  const wrapper = rowElement.closest('.home-scroll-wrapper') || rowElement.parentElement;
+  const arrowPrev = wrapper ? wrapper.querySelector('.row-scroll-arrow.prev') : null;
+  const arrowNext = wrapper ? wrapper.querySelector('.row-scroll-arrow.next') : null;
+
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let autoTimer = null;
+  let isInteracting = false;
+
+  function getStep() {
+    const firstCard = rowElement.querySelector('.product-card');
+    if (firstCard) {
+      return firstCard.offsetWidth + 16;
+    }
+    return 240;
+  }
+
+  function scrollOneCard(direction = 'next') {
+    const step = getStep();
+    const maxScroll = rowElement.scrollWidth - rowElement.clientWidth;
+
+    if (direction === 'next') {
+      if (rowElement.scrollLeft >= maxScroll - 8) {
+        rowElement.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        rowElement.scrollBy({ left: step, behavior: 'smooth' });
+      }
+    } else {
+      if (rowElement.scrollLeft <= 8) {
+        rowElement.scrollTo({ left: maxScroll, behavior: 'smooth' });
+      } else {
+        rowElement.scrollBy({ left: -step, behavior: 'smooth' });
+      }
+    }
+  }
+
+  function startAuto() {
+    if (prefersReduced || autoTimer || isInteracting || document.hidden) return;
+    autoTimer = setInterval(() => {
+      scrollOneCard('next');
+    }, 3500);
+  }
+
+  function stopAuto() {
+    if (autoTimer) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+    }
+  }
+
+  function pause() {
+    isInteracting = true;
+    stopAuto();
+  }
+
+  function resume() {
+    isInteracting = false;
+    startAuto();
+  }
+
+  // Interactive events
+  if (wrapper) {
+    wrapper.addEventListener('mouseenter', pause);
+    wrapper.addEventListener('mouseleave', resume);
+    wrapper.addEventListener('focusin', pause);
+    wrapper.addEventListener('focusout', resume);
+  }
+
+  rowElement.addEventListener('touchstart', pause, { passive: true });
+  rowElement.addEventListener('touchend', () => {
+    setTimeout(resume, 2500);
+  }, { passive: true });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopAuto();
+    } else if (!isInteracting) {
+      startAuto();
+    }
+  });
+
+  if (arrowPrev) {
+    arrowPrev.addEventListener('click', (e) => {
+      e.preventDefault();
+      scrollOneCard('prev');
+      pause();
+      setTimeout(resume, 4000);
+    });
+  }
+
+  if (arrowNext) {
+    arrowNext.addEventListener('click', (e) => {
+      e.preventDefault();
+      scrollOneCard('next');
+      pause();
+      setTimeout(resume, 4000);
+    });
+  }
+
+  const updateArrows = () => {
+    const maxScroll = rowElement.scrollWidth - rowElement.clientWidth;
+    if (arrowPrev) {
+      arrowPrev.style.opacity = rowElement.scrollLeft <= 8 ? '0.4' : '1';
+    }
+    if (arrowNext) {
+      arrowNext.style.opacity = rowElement.scrollLeft >= maxScroll - 8 ? '0.4' : '1';
+    }
+  };
+
+  rowElement.addEventListener('scroll', updateArrows, { passive: true });
+  setTimeout(updateArrows, 300);
+
+  startAuto();
+
+  const controller = { stop: stopAuto, start: startAuto };
+  registeredSliders.set(rowId, controller);
+}
+
+// ==========================================================================
+// 4. Skeleton Helpers & Per-Section Error Handlers
+// ==========================================================================
+function renderSkeleton(containerId, count = 5) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container.innerHTML = Array(count).fill(0).map(() => `
+    <div class="product-card skeleton-card" style="flex: 0 0 230px; min-width: 230px;">
+      <div class="skeleton-box" style="height: 180px; width: 100%; margin-bottom: 12px; background: #e8ebf0; border-radius: 4px;"></div>
+      <div class="skeleton-box" style="height: 12px; width: 45%; margin-bottom: 8px; background: #e8ebf0; border-radius: 2px;"></div>
+      <div class="skeleton-box" style="height: 15px; width: 85%; margin-bottom: 8px; background: #e8ebf0; border-radius: 2px;"></div>
+      <div class="skeleton-box" style="height: 18px; width: 55%; background: #e8ebf0; border-radius: 2px;"></div>
+    </div>
+  `).join('');
+}
+
+function renderSectionError(containerId, sectionTitle, retryFn) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="home-section-error-pill">
+      <span>Failed to load ${sectionTitle}.</span>
+      <button type="button" class="btn-section-retry">Retry</button>
+    </div>
+  `;
+
+  const btn = container.querySelector('.btn-section-retry');
+  if (btn) {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      renderSkeleton(containerId, 4);
+      retryFn();
+    });
+  }
+}
+
+// ==========================================================================
+// 5. Load Home Page Data & Populate Individual Sections
+// ==========================================================================
+let homeDataCache = null;
+
+async function fetchHomeData(force = false) {
+  if (homeDataCache && !force) return homeDataCache;
+  const res = await fetch('/api/products/home');
+  if (!res.ok) {
+    throw new Error(`HTTP Error ${res.status}`);
+  }
+  homeDataCache = await res.json();
+  return homeDataCache;
+}
+
+async function loadHomePageData() {
+  // Set initial skeletons
+  ['deals-products-row', 'budget-products-row', 'top-rated-products-row', 'premium-products-row', 'new-arrivals-products-row', 'best-sellers-products-row'].forEach(id => {
+    renderSkeleton(id, 5);
+  });
+
+  try {
+    const data = await fetchHomeData();
+    populateAllSections(data);
+  } catch (err) {
+    console.error('Home Page Data Fetch failed:', err);
+    // Render individual retry buttons for all sections
+    renderSectionError('deals-products-row', 'Deals', () => loadIndividualSection('deals'));
+    renderSectionError('budget-products-row', 'Budget Picks', () => loadIndividualSection('budget'));
+    renderSectionError('top-rated-products-row', 'Top Rated', () => loadIndividualSection('topRated'));
+    renderSectionError('premium-products-row', 'Premium Picks', () => loadIndividualSection('premium'));
+    renderSectionError('new-arrivals-products-row', 'New Arrivals', () => loadIndividualSection('newArrivals'));
+    renderSectionError('best-sellers-products-row', 'Best Sellers', () => loadIndividualSection('bestSellers'));
+  }
+}
+
+async function loadIndividualSection(type) {
+  try {
+    const data = await fetchHomeData(true);
+    populateAllSections(data);
+  } catch (err) {
+    console.error(`Retry failed for ${type}:`, err);
+  }
+}
+
+function populateAllSections(data) {
+  const { renderCard, formatMoney, attachEvents } = getHelpers();
+  const allRenderedProducts = [];
+
+  // A. Deal of the Day
+  const dealsRow = document.getElementById('deals-products-row');
+  if (dealsRow) {
+    if (Array.isArray(data.deals) && data.deals.length > 0) {
+      dealsRow.innerHTML = data.deals.map(p => renderCard(p, { showDiscountPill: true })).join('');
+      allRenderedProducts.push(...data.deals);
+      initAutoSlider('deals-products-row');
+    } else {
+      dealsRow.innerHTML = '<p class="empty-state-muted">No deals available right now.</p>';
+    }
+  }
+
+  // B. Budget Picks (Under Rs 999)
+  const budgetRow = document.getElementById('budget-products-row');
+  if (budgetRow) {
+    if (Array.isArray(data.budgetPicks) && data.budgetPicks.length > 0) {
+      budgetRow.innerHTML = data.budgetPicks.map(p => renderCard(p, { showDiscountPill: true })).join('');
+      allRenderedProducts.push(...data.budgetPicks);
+      initAutoSlider('budget-products-row');
+    } else {
+      budgetRow.innerHTML = '<p class="empty-state-muted">No items under ₹999 at this time.</p>';
+    }
+  }
+
+  // C. Shop by Category Quad Blocks (4 blocks, 2x2 grid each)
+  const catBlocksContainer = document.getElementById('category-blocks-container');
+  if (catBlocksContainer && Array.isArray(data.categoryBlocks) && data.categoryBlocks.length > 0) {
+    catBlocksContainer.innerHTML = data.categoryBlocks.map(block => {
+      const quadItemsHtml = (block.products || []).slice(0, 4).map(item => {
+        const imgUrl = (Array.isArray(item.images) && item.images[0]) ? item.images[0] : (item.image || '');
+        return `
+          <a href="product.html?id=${item._id}" class="cat-quad-item">
+            <div class="cat-quad-img-wrap">
+              <img src="${imgUrl}" alt="${item.name}" loading="lazy" />
+            </div>
+            <span class="cat-quad-name" title="${item.name}">${item.name}</span>
+            <span class="cat-quad-price">From ${formatMoney(item.price)}</span>
+          </a>
+        `;
+      }).join('');
+
       return `
-        <a href="product.html?id=${p._id}" class="deal-item-card" aria-label="${escapeHTML(p.name)}">
-          <img src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}" class="deal-item-img" loading="lazy" />
-          <div class="deal-item-brand">${escapeHTML(p.brand)}</div>
-          <div class="deal-item-name">${escapeHTML(p.name)}</div>
-          <div class="deal-item-offer">${discountPct}% OFF</div>
-          <div class="deal-item-price">${formatPrice(p.price)}</div>
+        <div class="category-block-card">
+          <div class="category-block-header">
+            <h3 class="category-block-title">${block.category}</h3>
+            <span class="category-block-subtitle">${block.title || 'Top picks & essentials'}</span>
+          </div>
+          <div class="category-block-2x2">
+            ${quadItemsHtml}
+          </div>
+          <a href="products.html?category=${encodeURIComponent(block.category)}" class="cat-block-see-all">
+            See all in ${block.category}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </a>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // D. Top Rated Products
+  const topRatedRow = document.getElementById('top-rated-products-row');
+  if (topRatedRow) {
+    if (Array.isArray(data.topRated) && data.topRated.length > 0) {
+      topRatedRow.innerHTML = data.topRated.map(p => renderCard(p, { showDiscountPill: true })).join('');
+      allRenderedProducts.push(...data.topRated);
+      initAutoSlider('top-rated-products-row');
+    } else {
+      topRatedRow.innerHTML = '<p class="empty-state-muted">No top-rated items currently found.</p>';
+    }
+  }
+
+  // E. Premium Picks (Above Rs 4,999)
+  const premiumRow = document.getElementById('premium-products-row');
+  if (premiumRow) {
+    if (Array.isArray(data.premiumPicks) && data.premiumPicks.length > 0) {
+      premiumRow.innerHTML = data.premiumPicks.map(p => renderCard(p, { showDiscountPill: true })).join('');
+      allRenderedProducts.push(...data.premiumPicks);
+      initAutoSlider('premium-products-row');
+    } else {
+      premiumRow.innerHTML = '<p class="empty-state-muted">No premium items found.</p>';
+    }
+  }
+
+  // F. New Arrivals
+  const newArrivalsRow = document.getElementById('new-arrivals-products-row');
+  if (newArrivalsRow) {
+    if (Array.isArray(data.newArrivals) && data.newArrivals.length > 0) {
+      newArrivalsRow.innerHTML = data.newArrivals.map(p => renderCard(p, { showDiscountPill: true })).join('');
+      allRenderedProducts.push(...data.newArrivals);
+      initAutoSlider('new-arrivals-products-row');
+    } else {
+      newArrivalsRow.innerHTML = '<p class="empty-state-muted">No new arrivals at this moment.</p>';
+    }
+  }
+
+  // G. Best Sellers
+  const bestSellersRow = document.getElementById('best-sellers-products-row');
+  if (bestSellersRow) {
+    if (Array.isArray(data.bestSellers) && data.bestSellers.length > 0) {
+      bestSellersRow.innerHTML = data.bestSellers.map(p => renderCard(p, { showDiscountPill: true })).join('');
+      allRenderedProducts.push(...data.bestSellers);
+      initAutoSlider('best-sellers-products-row');
+    } else {
+      bestSellersRow.innerHTML = '<p class="empty-state-muted">No best sellers available.</p>';
+    }
+  }
+
+  // H. Featured Brands (with real product counts linking to ?brand=...)
+  const brandsContainer = document.getElementById('brand-chips-container');
+  if (brandsContainer && Array.isArray(data.brands) && data.brands.length > 0) {
+    brandsContainer.innerHTML = data.brands.map(b => {
+      const name = b.name || b;
+      const count = b.count || 1;
+      const countLabel = count === 1 ? '1 item' : `${count} items`;
+      return `
+        <a href="products.html?brand=${encodeURIComponent(name)}" class="brand-chip" title="Explore ${name}">
+          <span class="brand-chip-name">${name}</span>
+          <span class="brand-chip-count">${countLabel}</span>
         </a>
       `;
     }).join('');
-  } catch (err) {
-    console.warn('Error loading top deals:', err);
+  }
+
+  // Attach card interaction listeners (Wishlist toggle & Add to Cart)
+  if (allRenderedProducts.length > 0 && typeof attachEvents === 'function') {
+    attachEvents(allRenderedProducts, document);
   }
 }
 
 // ==========================================================================
-// 3. Product Catalog Listing, Filters & Pagination
+// 6. Recently Viewed Products (localStorage apex_recently_viewed)
 // ==========================================================================
-async function fetchCatalog() {
-  const grid = document.getElementById('products-grid');
-  const countText = document.getElementById('results-count-display');
-  const paginationContainer = document.getElementById('pagination-container');
+async function loadRecentlyViewed() {
+  const section = document.getElementById('section-recently-viewed');
+  const row = document.getElementById('recently-viewed-products-row');
+  const clearBtn = document.getElementById('clear-recent-history-btn');
 
-  if (!grid) return;
+  if (!section || !row) return;
 
-  // Render skeleton loading cards
-  grid.innerHTML = Array(6).fill(0).map(() => `
-    <div class="product-card">
-      <div class="skeleton-box" style="height: 190px; width: 100%; margin-bottom: 12px;"></div>
-      <div class="skeleton-box" style="height: 12px; width: 40%; margin-bottom: 8px;"></div>
-      <div class="skeleton-box" style="height: 16px; width: 85%; margin-bottom: 8px;"></div>
-      <div class="skeleton-box" style="height: 14px; width: 50%; margin-bottom: 12px;"></div>
-      <div class="skeleton-box" style="height: 22px; width: 60%;"></div>
-    </div>
-  `).join('');
+  const { renderCard, attachEvents, recentViewed, toast } = getHelpers();
+  if (!recentViewed) {
+    section.style.display = 'none';
+    return;
+  }
+
+  const ids = recentViewed.getAll();
+  if (!ids || ids.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  renderSkeleton('recently-viewed-products-row', Math.min(ids.length, 4));
+  section.style.display = '';
 
   try {
-    const params = new URLSearchParams();
-    params.append('page', currentCatalogState.page);
-    params.append('limit', currentCatalogState.limit);
-
-    if (currentCatalogState.category && currentCatalogState.category !== 'All') {
-      params.append('category', currentCatalogState.category);
+    const res = await fetch(`/api/products?ids=${encodeURIComponent(ids.join(','))}`);
+    if (!res.ok) {
+      section.style.display = 'none';
+      return;
     }
-    if (currentCatalogState.search) {
-      params.append('search', currentCatalogState.search);
-    }
-    if (currentCatalogState.sort) {
-      params.append('sort', currentCatalogState.sort);
-    }
-    if (currentCatalogState.minPrice) {
-      params.append('minPrice', currentCatalogState.minPrice);
-    }
-    if (currentCatalogState.maxPrice) {
-      params.append('maxPrice', currentCatalogState.maxPrice);
-    }
-    if (currentCatalogState.minRating) {
-      params.append('minRating', currentCatalogState.minRating);
-    }
-    if (currentCatalogState.inStock) {
-      params.append('inStock', 'true');
-    }
-
-    const data = await api(`/api/products?${params.toString()}`);
+    const data = await res.json();
     const products = data.products || [];
-    currentCatalogState.total = data.total || 0;
-    currentCatalogState.pages = data.pages || 1;
 
-    // Update Result Count text
-    if (countText) {
-      const startItem = currentCatalogState.total === 0 ? 0 : (currentCatalogState.page - 1) * currentCatalogState.limit + 1;
-      const endItem = Math.min(currentCatalogState.total, currentCatalogState.page * currentCatalogState.limit);
-      countText.innerHTML = `Showing <strong>${startItem}–${endItem}</strong> of <strong>${currentCatalogState.total}</strong> products`;
+    if (products.length === 0) {
+      section.style.display = 'none';
+      return;
     }
 
-    renderProductCards(products);
-    renderPagination(paginationContainer);
-  } catch (error) {
-    console.error('Failed to load catalog:', error);
-    grid.innerHTML = `
-      <div style="grid-column: 1 / -1; padding: 40px; text-align: center;">
-        <p style="color: var(--danger); font-size: 15px; font-weight: 600; margin-bottom: 12px;">
-          Failed to load products: ${escapeHTML(error.message)}
-        </p>
-        <button class="btn-add-cart" style="max-width: 180px; margin: 0 auto;" onclick="fetchCatalog()">
-          Retry Loading
-        </button>
-      </div>
-    `;
+    // Preserve the order of recent viewing
+    const ordered = [];
+    ids.forEach(id => {
+      const found = products.find(p => p._id === id);
+      if (found) ordered.push(found);
+    });
+
+    row.innerHTML = ordered.map(p => renderCard(p, { showDiscountPill: true })).join('');
+    section.style.display = '';
+
+    if (typeof attachEvents === 'function') {
+      attachEvents(ordered, row);
+    }
+
+    initAutoSlider('recently-viewed-products-row');
+
+    if (clearBtn) {
+      clearBtn.onclick = (e) => {
+        e.preventDefault();
+        recentViewed.clear();
+        section.style.display = 'none';
+        row.innerHTML = '';
+        if (typeof toast === 'function') {
+          toast('Browsing history cleared');
+        }
+      };
+    }
+  } catch (err) {
+    console.error('Failed to load recently viewed:', err);
+    section.style.display = 'none';
   }
 }
-
-function renderProductCards(products) {
-  const grid = document.getElementById('products-grid');
-  if (!grid) return;
-
-  if (products.length === 0) {
-    grid.innerHTML = `
-      <div style="grid-column: 1 / -1; padding: 60px 20px; text-align: center;">
-        <div style="color: var(--text-muted); margin-bottom: 12px;">${Icons.search(48)}</div>
-        <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">No products found</h3>
-        <p style="color: var(--text-muted); font-size: 13px; max-width: 360px; margin: 0 auto 16px auto;">
-          Try adjusting or clearing your filters to discover matching items across our collections.
-        </p>
-        <button class="btn-buy-now" style="max-width: 160px; margin: 0 auto;" onclick="clearAllFilters()">
-          Clear All Filters
-        </button>
-      </div>
-    `;
-    return;
-  }
-
-  grid.innerHTML = products.map(p => {
-    const isOutOfStock = p.stock <= 0;
-    const isLowStock = p.stock > 0 && p.stock < 5;
-    const discount = p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
-    const isWishlisted = Wishlist.has(p._id);
-
-    return `
-      <div class="product-card ${isOutOfStock ? 'out-of-stock' : ''}" data-id="${p._id}">
-        <!-- Wishlist Toggle -->
-        <button 
-          class="wishlist-btn ${isWishlisted ? 'active' : ''}" 
-          data-id="${p._id}" 
-          aria-label="Save to Wishlist"
-        >
-          ${Icons.heart(18, isWishlisted)}
-        </button>
-
-        <!-- Product Image -->
-        <a href="product.html?id=${p._id}" class="product-card-img-wrap" aria-label="View ${escapeHTML(p.name)}">
-          <img 
-            src="${escapeHTML(p.image)}" 
-            alt="${escapeHTML(p.name)}" 
-            class="product-card-img" 
-            loading="lazy"
-          />
-        </a>
-
-        <!-- Brand & Title -->
-        <div class="product-brand">${escapeHTML(p.brand || 'ApexStore')}</div>
-        <h3 class="product-title">
-          <a href="product.html?id=${p._id}" title="${escapeHTML(p.name)}">${escapeHTML(p.name)}</a>
-        </h3>
-
-        <!-- Rating Pill -->
-        <div style="display: flex; align-items: center; margin-bottom: 4px;">
-          <span class="rating-pill">
-            <span>${p.rating ? p.rating.toFixed(1) : '4.2'}</span>
-            ${Icons.star(10, true)}
-          </span>
-          <span class="rating-count">(${p.reviewCount ? p.reviewCount.toLocaleString('en-IN') : '120'})</span>
-        </div>
-
-        <!-- Price Block -->
-        <div class="product-price-block">
-          <span class="price-selling">${formatPrice(p.price)}</span>
-          ${p.mrp > p.price ? `<span class="price-mrp">${formatPrice(p.mrp)}</span>` : ''}
-          ${discount > 0 ? `<span class="price-discount">${discount}% off</span>` : ''}
-        </div>
-
-        <!-- Badges -->
-        ${p.freeDelivery ? `<div class="delivery-badge free">Free delivery</div>` : `<div class="delivery-badge">Standard Delivery</div>`}
-        ${isLowStock ? `<div class="stock-warning-text">Only ${p.stock} left in stock!</div>` : ''}
-        ${isOutOfStock ? `<div class="out-of-stock-label">Out of stock</div>` : ''}
-
-        <!-- Add to Cart Button -->
-        <div class="card-action-wrap">
-          <button 
-            class="card-add-cart-btn btn-add-card-action" 
-            data-id="${p._id}"
-            ${isOutOfStock ? 'disabled' : ''}
-          >
-            ${Icons.cart(15)}
-            <span>${isOutOfStock ? 'Out of Stock' : 'Add to Cart'}</span>
-          </button>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  // Attach Event Handlers on Cards
-  attachCardEvents(products);
-}
-
-function attachCardEvents(products) {
-  // Wishlist heart buttons
-  const wishlistButtons = document.querySelectorAll('.wishlist-btn');
-  wishlistButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const id = btn.getAttribute('data-id');
-      if (id) {
-        Wishlist.toggle(id);
-      }
-    });
-  });
-
-  // Add to cart buttons
-  const addButtons = document.querySelectorAll('.btn-add-card-action');
-  addButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const id = btn.getAttribute('data-id');
-      const prod = products.find(p => String(p._id) === id);
-      if (prod) {
-        Cart.addToCart(prod, 1);
-      }
-    });
-  });
-}
-
-function renderPagination(container) {
-  if (!container) return;
-
-  const { page, pages } = currentCatalogState;
-  if (pages <= 1) {
-    container.innerHTML = '';
-    return;
-  }
-
-  let html = `
-    <button class="page-btn" id="page-prev-btn" ${page <= 1 ? 'disabled' : ''}>
-      ${Icons.chevronLeft(14)} Prev
-    </button>
-  `;
-
-  for (let i = 1; i <= pages; i++) {
-    html += `
-      <button class="page-btn ${i === page ? 'active' : ''}" data-page="${i}">
-        ${i}
-      </button>
-    `;
-  }
-
-  html += `
-    <button class="page-btn" id="page-next-btn" ${page >= pages ? 'disabled' : ''}>
-      Next ${Icons.chevronRight(14)}
-    </button>
-  `;
-
-  container.innerHTML = html;
-
-  // Attach Pagination Clicks
-  const prevBtn = container.querySelector('#page-prev-btn');
-  const nextBtn = container.querySelector('#page-next-btn');
-  const numButtons = container.querySelectorAll('.page-btn[data-page]');
-
-  if (prevBtn) {
-    prevBtn.addEventListener('click', () => {
-      if (currentCatalogState.page > 1) {
-        currentCatalogState.page -= 1;
-        fetchCatalog();
-        scrollToCatalog();
-      }
-    });
-  }
-
-  if (nextBtn) {
-    nextBtn.addEventListener('click', () => {
-      if (currentCatalogState.page < currentCatalogState.pages) {
-        currentCatalogState.page += 1;
-        fetchCatalog();
-        scrollToCatalog();
-      }
-    });
-  }
-
-  numButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const p = parseInt(btn.getAttribute('data-page'), 10);
-      if (p !== currentCatalogState.page) {
-        currentCatalogState.page = p;
-        fetchCatalog();
-        scrollToCatalog();
-      }
-    });
-  });
-}
-
-function scrollToCatalog() {
-  const target = document.getElementById('catalog-listing-section');
-  if (target) {
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-}
-
-// Clear all filters
-function clearAllFilters() {
-  currentCatalogState.category = 'All';
-  currentCatalogState.search = '';
-  currentCatalogState.minPrice = '';
-  currentCatalogState.maxPrice = '';
-  currentCatalogState.minRating = '';
-  currentCatalogState.inStock = false;
-  currentCatalogState.sort = 'relevance';
-  currentCatalogState.page = 1;
-
-  // Reset inputs
-  const catCheckboxes = document.querySelectorAll('.filter-category-checkbox');
-  catCheckboxes.forEach(cb => cb.checked = false);
-
-  const minPriceInput = document.getElementById('filter-min-price');
-  if (minPriceInput) minPriceInput.value = '';
-
-  const maxPriceInput = document.getElementById('filter-max-price');
-  if (maxPriceInput) maxPriceInput.value = '';
-
-  const ratingRadios = document.querySelectorAll('input[name="filter-rating"]');
-  ratingRadios.forEach(r => r.checked = false);
-
-  const inStockCheckbox = document.getElementById('filter-instock-only');
-  if (inStockCheckbox) inStockCheckbox.checked = false;
-
-  const sortSelect = document.getElementById('catalog-sort-select');
-  if (sortSelect) sortSelect.value = 'relevance';
-
-  fetchCatalog();
-}
-
-// Global Trigger used by header search bar
-window.triggerCatalogFilter = function(searchQuery, category) {
-  currentCatalogState.search = searchQuery || '';
-  currentCatalogState.category = category || 'All';
-  currentCatalogState.page = 1;
-
-  // Sync category checkboxes
-  const catCheckboxes = document.querySelectorAll('.filter-category-checkbox');
-  catCheckboxes.forEach(cb => {
-    cb.checked = (cb.value === category);
-  });
-
-  fetchCatalog();
-  scrollToCatalog();
-};
-
-// ==========================================================================
-// 4. Filters Sidebar & Drawer Listeners Initialization
-// ==========================================================================
-function initFilterControls() {
-  // Category Checkboxes
-  const catCheckboxes = document.querySelectorAll('.filter-category-checkbox');
-  catCheckboxes.forEach(cb => {
-    cb.addEventListener('change', () => {
-      // Find selected category
-      const checkedBoxes = Array.from(catCheckboxes).filter(c => c.checked);
-      if (checkedBoxes.length === 1) {
-        currentCatalogState.category = checkedBoxes[0].value;
-      } else {
-        currentCatalogState.category = 'All';
-      }
-      currentCatalogState.page = 1;
-      fetchCatalog();
-    });
-  });
-
-  // Price Apply
-  const applyPriceBtn = document.getElementById('price-filter-apply-btn');
-  if (applyPriceBtn) {
-    applyPriceBtn.addEventListener('click', () => {
-      const minVal = document.getElementById('filter-min-price').value.trim();
-      const maxVal = document.getElementById('filter-max-price').value.trim();
-      currentCatalogState.minPrice = minVal;
-      currentCatalogState.maxPrice = maxVal;
-      currentCatalogState.page = 1;
-      fetchCatalog();
-    });
-  }
-
-  // Minimum Rating Radios
-  const ratingRadios = document.querySelectorAll('input[name="filter-rating"]');
-  ratingRadios.forEach(radio => {
-    radio.addEventListener('change', (e) => {
-      currentCatalogState.minRating = e.target.value;
-      currentCatalogState.page = 1;
-      fetchCatalog();
-    });
-  });
-
-  // In-Stock Only
-  const inStockCheckbox = document.getElementById('filter-instock-only');
-  if (inStockCheckbox) {
-    inStockCheckbox.addEventListener('change', (e) => {
-      currentCatalogState.inStock = e.target.checked;
-      currentCatalogState.page = 1;
-      fetchCatalog();
-    });
-  }
-
-  // Sort Dropdown
-  const sortSelect = document.getElementById('catalog-sort-select');
-  if (sortSelect) {
-    sortSelect.addEventListener('change', (e) => {
-      currentCatalogState.sort = e.target.value;
-      currentCatalogState.page = 1;
-      fetchCatalog();
-    });
-  }
-
-  // Clear Filters
-  const clearBtn = document.getElementById('clear-filters-btn');
-  if (clearBtn) {
-    clearBtn.addEventListener('click', clearAllFilters);
-  }
-
-  // Mobile Filter Drawer Toggle
-  const openDrawerBtn = document.getElementById('open-mobile-filters');
-  const sidebar = document.getElementById('filters-sidebar');
-  const closeDrawerBtn = document.getElementById('close-mobile-filters');
-
-  if (openDrawerBtn && sidebar) {
-    openDrawerBtn.addEventListener('click', () => {
-      sidebar.classList.add('open');
-    });
-  }
-
-  if (closeDrawerBtn && sidebar) {
-    closeDrawerBtn.addEventListener('click', () => {
-      sidebar.classList.remove('open');
-    });
-  }
-}
-
-// Initial Page Load
-document.addEventListener('DOMContentLoaded', () => {
-  // Read URL parameters if present
-  const urlParams = new URLSearchParams(window.location.search);
-  const catParam = urlParams.get('category');
-  const searchParam = urlParams.get('search');
-
-  if (catParam) {
-    currentCatalogState.category = catParam;
-    const catCheckboxes = document.querySelectorAll('.filter-category-checkbox');
-    catCheckboxes.forEach(cb => {
-      if (cb.value.toLowerCase() === catParam.toLowerCase()) cb.checked = true;
-    });
-  }
-
-  if (searchParam) {
-    currentCatalogState.search = searchParam;
-    const searchInput = document.getElementById('header-search-input');
-    if (searchInput) searchInput.value = searchParam;
-  }
-
-  initHeroCarousel();
-  loadTopDeals();
-  initFilterControls();
-  fetchCatalog();
-});

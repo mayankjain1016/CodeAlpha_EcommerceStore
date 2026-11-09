@@ -1,8 +1,8 @@
 /**
  * ApexStore - common.js
  * Professional Marketplace Core: Inline SVG Library, Safe Storage,
- * Wishlist Manager, Cart Manager, Delivery Fee Logic, Live Autocomplete,
- * Toasts, and Global Header & Footer Renderers.
+ * Wishlist Manager, Recently Viewed Manager, Cart Manager, Shared Product Card,
+ * Delivery Fee Logic, Live Autocomplete, Toasts, and Global Header & Footer Renderers.
  */
 
 // ==========================================================================
@@ -27,7 +27,8 @@ const Icons = {
   arrowUp: (size = 14) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`,
   package: (size = 18) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
   percent: (size = 16) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>`,
-  filter: (size = 16) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>`
+  filter: (size = 16) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>`,
+  clock: (size = 16) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`
 };
 
 // ==========================================================================
@@ -105,7 +106,31 @@ const Wishlist = {
 };
 
 // ==========================================================================
-// 4. Authentication State Helper
+// 4. Recently Viewed Products Manager
+// ==========================================================================
+const RECENTLY_VIEWED_KEY = 'apex_recently_viewed';
+
+const RecentlyViewed = {
+  getAll() {
+    return storage.get(RECENTLY_VIEWED_KEY, []);
+  },
+  add(productId) {
+    if (!productId) return;
+    const idStr = String(productId);
+    let list = this.getAll().filter(id => id !== idStr);
+    list.unshift(idStr);
+    if (list.length > 8) {
+      list = list.slice(0, 8);
+    }
+    storage.set(RECENTLY_VIEWED_KEY, list);
+  },
+  clear() {
+    storage.remove(RECENTLY_VIEWED_KEY);
+  }
+};
+
+// ==========================================================================
+// 5. Authentication State Helper
 // ==========================================================================
 const AUTH_TOKEN_KEY = 'apex_auth_token';
 const AUTH_USER_KEY = 'apex_auth_user';
@@ -146,7 +171,7 @@ const Auth = {
 };
 
 // ==========================================================================
-// 5. Cart & Saved For Later Manager
+// 6. Cart & Saved For Later Manager
 // ==========================================================================
 const CART_KEY = 'apex_shopping_cart';
 const SAVED_LATER_KEY = 'apex_saved_for_later';
@@ -165,111 +190,93 @@ const Cart = {
   saveSavedForLater(list) {
     storage.set(SAVED_LATER_KEY, list);
   },
-  addToCart(product, qty = 1) {
+  addToCart(product, quantity = 1) {
     const cart = this.getCart();
-    const productId = String(product._id || product.id);
-    const existingIndex = cart.findIndex(item => String(item._id) === productId);
+    const existingIndex = cart.findIndex(item => item._id === product._id);
 
-    const availableStock = product.stock !== undefined ? product.stock : 999;
-    const addedQty = Math.max(1, parseInt(qty, 10) || 1);
-
-    if (availableStock <= 0) {
-      showToast('This product is currently out of stock', 'error');
-      return false;
-    }
+    const safePrice = Number(product.price) || 0;
+    const safeMrp = Number(product.mrp) || safePrice;
 
     if (existingIndex > -1) {
-      const currentQty = cart[existingIndex].qty;
-      const targetQty = currentQty + addedQty;
-      if (targetQty > availableStock) {
-        showToast(`Only ${availableStock} unit(s) available in stock`, 'error');
-        cart[existingIndex].qty = availableStock;
-      } else {
-        cart[existingIndex].qty = targetQty;
+      const newQty = cart[existingIndex].qty + quantity;
+      if (product.stock && newQty > product.stock) {
+        showToast(`Only ${product.stock} units available in stock`, 'error');
+        return false;
       }
+      cart[existingIndex].qty = newQty;
     } else {
-      if (addedQty > availableStock) {
-        showToast(`Only ${availableStock} unit(s) available in stock`, 'error');
+      if (product.stock && quantity > product.stock) {
+        showToast(`Only ${product.stock} units available in stock`, 'error');
         return false;
       }
       cart.push({
-        _id: productId,
-        brand: product.brand || '',
+        _id: product._id,
         name: product.name,
-        price: product.price,
-        mrp: product.mrp || product.price,
+        price: safePrice,
+        mrp: safeMrp,
         image: product.image || (product.images && product.images[0]) || '',
-        category: product.category,
+        brand: product.brand || 'ApexStore',
         stock: product.stock,
         freeDelivery: Boolean(product.freeDelivery),
-        qty: addedQty
+        qty: quantity
       });
     }
 
     this.saveCart(cart);
-    showToast(`Added to cart: ${product.name.substring(0, 28)}...`, 'success');
+    showToast(`Added "${product.name.substring(0, 24)}..." to Cart`, 'success');
     return true;
   },
-  setQty(productId, qty) {
-    const cart = this.getCart();
-    const idStr = String(productId);
-    const item = cart.find(i => String(i._id) === idStr);
-    if (!item) return;
-
-    const parsedQty = parseInt(qty, 10);
-    if (parsedQty <= 0) {
-      this.removeFromCart(productId);
-      return;
+  updateQuantity(productId, newQty) {
+    let cart = this.getCart();
+    const index = cart.findIndex(item => item._id === productId);
+    if (index > -1) {
+      if (newQty <= 0) {
+        return this.removeFromCart(productId);
+      }
+      if (cart[index].stock && newQty > cart[index].stock) {
+        showToast(`Maximum ${cart[index].stock} units available`, 'error');
+        return false;
+      }
+      cart[index].qty = newQty;
+      this.saveCart(cart);
+      return true;
     }
-
-    if (item.stock !== undefined && parsedQty > item.stock) {
-      showToast(`Only ${item.stock} unit(s) available in stock`, 'error');
-      item.qty = item.stock;
-    } else {
-      item.qty = parsedQty;
-    }
-
-    this.saveCart(cart);
+    return false;
   },
   removeFromCart(productId) {
     let cart = this.getCart();
-    const idStr = String(productId);
-    cart = cart.filter(item => String(item._id) !== idStr);
+    cart = cart.filter(item => item._id !== productId);
     this.saveCart(cart);
     showToast('Item removed from cart', 'info');
   },
   saveForLater(productId) {
-    const cart = this.getCart();
-    const idStr = String(productId);
-    const item = cart.find(i => String(i._id) === idStr);
-    if (!item) return;
+    let cart = this.getCart();
+    let saved = this.getSavedForLater();
+    const itemToSave = cart.find(item => item._id === productId);
 
-    // Remove from cart
-    this.removeFromCart(productId);
-
-    // Add to saved for later
-    const saved = this.getSavedForLater();
-    if (!saved.some(i => String(i._id) === idStr)) {
-      saved.push(item);
+    if (itemToSave) {
+      cart = cart.filter(item => item._id !== productId);
+      if (!saved.some(i => i._id === productId)) {
+        saved.push(itemToSave);
+      }
+      this.saveCart(cart);
       this.saveSavedForLater(saved);
       showToast('Item moved to Saved For Later', 'info');
     }
   },
   moveToCart(productId) {
     let saved = this.getSavedForLater();
-    const idStr = String(productId);
-    const item = saved.find(i => String(i._id) === idStr);
-    if (!item) return;
+    const itemToMove = saved.find(item => item._id === productId);
 
-    saved = saved.filter(i => String(i._id) !== idStr);
-    this.saveSavedForLater(saved);
-
-    this.addToCart(item, item.qty || 1);
+    if (itemToMove) {
+      saved = saved.filter(item => item._id !== productId);
+      this.saveSavedForLater(saved);
+      this.addToCart(itemToMove, itemToMove.qty || 1);
+    }
   },
-  removeSavedForLater(productId) {
+  removeFromSaved(productId) {
     let saved = this.getSavedForLater();
-    const idStr = String(productId);
-    saved = saved.filter(i => String(i._id) !== idStr);
+    saved = saved.filter(item => item._id !== productId);
     this.saveSavedForLater(saved);
     showToast('Item removed from Saved For Later', 'info');
   },
@@ -279,24 +286,26 @@ const Cart = {
   },
   getCartCount() {
     const cart = this.getCart();
-    return cart.reduce((total, item) => total + (item.qty || 0), 0);
+    return cart.reduce((sum, item) => sum + (Number(item.qty) || 1), 0);
   },
-  getCartPriceDetails() {
+  calculateTotals() {
     const cart = this.getCart();
     const totalItems = this.getCartCount();
 
-    const totalMrp = cart.reduce((acc, item) => {
-      const mrp = Number(item.mrp) || Number(item.price);
-      return acc + (mrp * item.qty);
-    }, 0);
+    let totalMrp = 0;
+    let subtotal = 0;
 
-    const subtotal = cart.reduce((acc, item) => {
-      return acc + (Number(item.price) * item.qty);
-    }, 0);
+    cart.forEach(item => {
+      const q = Number(item.qty) || 1;
+      const mrp = Number(item.mrp) || Number(item.price);
+      const price = Number(item.price);
+      totalMrp += mrp * q;
+      subtotal += price * q;
+    });
 
     const discountAmount = Math.max(0, totalMrp - subtotal);
-    // Free delivery on orders above Rs 499, else Rs 40
-    const deliveryCharges = (subtotal === 0 || subtotal >= 499) ? 0 : 40;
+    // Free delivery on orders above 499
+    const deliveryCharges = (subtotal >= 499 || subtotal === 0) ? 0 : 40;
     const grandTotal = subtotal + deliveryCharges;
     const totalSavings = discountAmount + (deliveryCharges === 0 && subtotal > 0 ? 40 : 0);
 
@@ -321,7 +330,7 @@ const Cart = {
 };
 
 // ==========================================================================
-// 6. API Client Helper
+// 7. API Client Helper
 // ==========================================================================
 async function api(endpoint, options = {}) {
   const url = endpoint.startsWith('/') ? endpoint : `/api/${endpoint}`;
@@ -365,7 +374,7 @@ async function api(endpoint, options = {}) {
 }
 
 // ==========================================================================
-// 7. Utility Formatters (Price, XSS Sanitizer, Toast)
+// 8. Utility Formatters (Price, XSS Sanitizer, Toast)
 // ==========================================================================
 function formatPrice(amount) {
   const num = Math.round(Number(amount) || 0);
@@ -420,7 +429,107 @@ function showToast(message, type = 'info') {
 }
 
 // ==========================================================================
-// 8. Global Header, Navbar & Footer Renderers
+// 9. Shared Product Card Component & Event Handler
+// ==========================================================================
+function renderProductCard(p, options = {}) {
+  const isOutOfStock = p.stock <= 0;
+  const isLowStock = p.stock > 0 && p.stock < 5;
+  const discount = p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
+  const isWishlisted = typeof Wishlist !== 'undefined' ? Wishlist.has(p._id) : false;
+  const extraClass = options.extraClass || '';
+
+  return `
+    <div class="product-card ${isOutOfStock ? 'out-of-stock' : ''} ${extraClass}" data-id="${p._id}">
+      <!-- Wishlist Toggle -->
+      <button 
+        class="wishlist-btn ${isWishlisted ? 'active' : ''}" 
+        data-id="${p._id}" 
+        aria-label="Save to Wishlist"
+      >
+        ${Icons.heart(18, isWishlisted)}
+      </button>
+
+      <!-- Product Image -->
+      <a href="product.html?id=${p._id}" class="product-card-img-wrap" aria-label="View ${escapeHTML(p.name)}">
+        <img 
+          src="${escapeHTML(p.image)}" 
+          alt="${escapeHTML(p.name)}" 
+          class="product-card-img" 
+          loading="lazy"
+        />
+      </a>
+
+      <!-- Brand & Title -->
+      <div class="product-brand">${escapeHTML(p.brand || 'ApexStore')}</div>
+      <h3 class="product-title">
+        <a href="product.html?id=${p._id}" title="${escapeHTML(p.name)}">${escapeHTML(p.name)}</a>
+      </h3>
+
+      <!-- Rating Pill -->
+      <div style="display: flex; align-items: center; margin-bottom: 4px;">
+        <span class="rating-pill">
+          <span>${p.rating ? Number(p.rating).toFixed(1) : '4.2'}</span>
+          ${Icons.star(10, true)}
+        </span>
+        <span class="rating-count">(${p.reviewCount ? Number(p.reviewCount).toLocaleString('en-IN') : '120'})</span>
+      </div>
+
+      <!-- Price Block -->
+      <div class="product-price-block">
+        <span class="price-selling">${formatPrice(p.price)}</span>
+        ${p.mrp > p.price ? `<span class="price-mrp">${formatPrice(p.mrp)}</span>` : ''}
+        ${discount > 0 ? `<span class="price-discount">${discount}% off</span>` : ''}
+      </div>
+
+      <!-- Badges -->
+      ${p.freeDelivery ? `<div class="delivery-badge free">Free delivery</div>` : `<div class="delivery-badge">Standard Delivery</div>`}
+      ${isLowStock ? `<div class="stock-warning-text">Only ${p.stock} left in stock!</div>` : ''}
+      ${isOutOfStock ? `<div class="out-of-stock-label">Out of stock</div>` : ''}
+
+      <!-- Add to Cart Button -->
+      <div class="card-action-wrap">
+        <button 
+          class="card-add-cart-btn btn-add-card-action" 
+          data-id="${p._id}"
+          ${isOutOfStock ? 'disabled' : ''}
+        >
+          ${Icons.cart(15)}
+          <span>${isOutOfStock ? 'Out of Stock' : 'Add to Cart'}</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function attachCardEvents(products, root = document) {
+  // Wishlist heart buttons
+  const wishlistButtons = root.querySelectorAll('.wishlist-btn');
+  wishlistButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-id');
+      if (id) {
+        Wishlist.toggle(id);
+      }
+    });
+  });
+
+  // Add to cart buttons
+  const addButtons = root.querySelectorAll('.btn-add-card-action');
+  addButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-id');
+      const prod = products.find(p => String(p._id) === String(id));
+      if (prod) {
+        Cart.addToCart(prod, 1);
+      }
+    });
+  });
+}
+
+// ==========================================================================
+// 10. Global Header, Navbar & Footer Renderers
 // ==========================================================================
 function renderGlobalHeader() {
   const header = document.getElementById('main-header');
@@ -448,7 +557,7 @@ function renderGlobalHeader() {
     <!-- Main Sticky Navbar -->
     <div class="container">
       <nav class="navbar" aria-label="Primary Navigation">
-        <!-- Logo -->
+        <!-- Logo (Links to Home) -->
         <a href="index.html" class="brand-logo" aria-label="ApexStore Home">
           <span class="brand-title">ApexStore</span>
           <span class="brand-sub">Explore <em>Plus</em></span>
@@ -533,14 +642,18 @@ function renderGlobalHeader() {
     <!-- Category Strip -->
     <div class="category-strip">
       <div class="container category-strip-inner" id="category-strip-links">
-        <a href="index.html" class="category-strip-item" data-category="All">All Categories</a>
-        <a href="index.html?category=Electronics" class="category-strip-item" data-category="Electronics">Electronics</a>
-        <a href="index.html?category=Fashion" class="category-strip-item" data-category="Fashion">Fashion</a>
-        <a href="index.html?category=Home" class="category-strip-item" data-category="Home">Home & Kitchen</a>
-        <a href="index.html?category=Sports" class="category-strip-item" data-category="Sports">Sports & Fitness</a>
+        <a href="index.html" class="category-strip-item" data-nav="home">Home</a>
+        <a href="products.html" class="category-strip-item" data-nav="all">All Categories</a>
+        <a href="products.html?category=Electronics" class="category-strip-item" data-nav="Electronics">Electronics</a>
+        <a href="products.html?category=Fashion" class="category-strip-item" data-nav="Fashion">Fashion</a>
+        <a href="products.html?category=Home" class="category-strip-item" data-nav="Home">Home & Kitchen</a>
+        <a href="products.html?category=Sports" class="category-strip-item" data-nav="Sports">Sports & Fitness</a>
       </div>
     </div>
   `;
+
+  // Highlight Active Item in Strip
+  highlightActiveCategoryStrip();
 
   // Attach Header Events
   initHeaderSearch();
@@ -548,6 +661,38 @@ function renderGlobalHeader() {
   const logoutBtn = header.querySelector('#logout-menu-btn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => Auth.logout());
+  }
+}
+
+function highlightActiveCategoryStrip() {
+  const stripItems = document.querySelectorAll('.category-strip-item');
+  if (!stripItems.length) return;
+  stripItems.forEach(el => el.classList.remove('active'));
+
+  const path = window.location.pathname;
+  const params = new URLSearchParams(window.location.search);
+  const categoryParam = params.get('category');
+  const searchParam = params.get('search');
+
+  const isHome = path === '/' || path === '' || path.endsWith('index.html');
+  const isProducts = path.endsWith('products.html');
+
+  if (isHome && !categoryParam && !searchParam) {
+    const homeItem = document.querySelector('.category-strip-item[data-nav="home"]');
+    if (homeItem) homeItem.classList.add('active');
+  } else if (isProducts || isHome) {
+    if (categoryParam) {
+      const match = document.querySelector(`.category-strip-item[data-nav="${categoryParam}"]`);
+      if (match) {
+        match.classList.add('active');
+      } else {
+        const allItem = document.querySelector('.category-strip-item[data-nav="all"]');
+        if (allItem) allItem.classList.add('active');
+      }
+    } else {
+      const allItem = document.querySelector('.category-strip-item[data-nav="all"]');
+      if (allItem) allItem.classList.add('active');
+    }
   }
 }
 
@@ -615,7 +760,7 @@ function initHeaderSearch() {
     }, 250);
   });
 
-  // Submit search query to index.html listing
+  // Submit search query to products.html listing
   const executeSearch = () => {
     const q = searchInput.value.trim();
     const cat = categorySelect ? categorySelect.value : 'All';
@@ -623,20 +768,22 @@ function initHeaderSearch() {
     if (q) params.append('search', q);
     if (cat && cat !== 'All') params.append('category', cat);
 
-    if (window.location.pathname.endsWith('index.html') || window.location.pathname === '/' || window.location.pathname === '') {
+    if (window.location.pathname.endsWith('products.html')) {
       if (typeof window.triggerCatalogFilter === 'function') {
         window.triggerCatalogFilter(q, cat);
         suggestionsBox.style.display = 'none';
         return;
       }
     }
-    window.location.href = `index.html?${params.toString()}`;
+    window.location.href = `products.html?${params.toString()}`;
   };
 
-  searchForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    executeSearch();
-  });
+  if (searchForm) {
+    searchForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      executeSearch();
+    });
+  }
 
   // Close suggestions when clicking outside
   document.addEventListener('click', (e) => {
@@ -702,17 +849,18 @@ function renderGlobalFooter() {
           <ul class="footer-links-list">
             <li><a href="orders.html">Track Orders</a></li>
             <li><a href="cart.html">View Cart</a></li>
-            <li><a href="index.html">Product Catalog</a></li>
+            <li><a href="products.html">Product Catalog</a></li>
             <li><a href="login.html">My Account</a></li>
+            <li><a href="mailto:support@apexstore.com">24x7 Customer Support</a></li>
           </ul>
         </div>
         <div>
-          <h4 class="footer-col-title">Categories</h4>
+          <h4 class="footer-col-title">Shop by Category</h4>
           <ul class="footer-links-list">
-            <li><a href="index.html?category=Electronics">Electronics & Audio</a></li>
-            <li><a href="index.html?category=Fashion">Fashion & Apparel</a></li>
-            <li><a href="index.html?category=Home">Home & Kitchenware</a></li>
-            <li><a href="index.html?category=Sports">Sports & Fitness</a></li>
+            <li><a href="products.html?category=Electronics">Electronics & Audio</a></li>
+            <li><a href="products.html?category=Fashion">Fashion & Apparel</a></li>
+            <li><a href="products.html?category=Home">Home & Kitchenware</a></li>
+            <li><a href="products.html?category=Sports">Sports & Fitness</a></li>
           </ul>
         </div>
         <div>
@@ -754,3 +902,18 @@ document.addEventListener('DOMContentLoaded', () => {
   Cart.updateCartBadge();
   Wishlist.updateUI();
 });
+
+// Expose ApexStore namespace for modules & scripts
+window.Apex = {
+  renderProductCard,
+  formatPrice,
+  attachCardEvents,
+  RecentlyViewed,
+  showToast,
+  api,
+  Icons,
+  Cart,
+  Wishlist,
+  escapeHTML,
+  Auth
+};

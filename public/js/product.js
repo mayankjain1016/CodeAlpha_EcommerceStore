@@ -21,7 +21,7 @@ async function loadProduct() {
       <div style="background: white; padding: 48px; border-radius: 4px; text-align: center;">
         <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">No Product Specified</h2>
         <p style="color: var(--text-muted); margin-bottom: 16px;">Please choose a product from our catalog.</p>
-        <a href="index.html" class="btn-buy-now" style="display: inline-block; max-width: 180px;">Go to Catalog</a>
+        <a href="products.html" class="btn-buy-now" style="display: inline-block; max-width: 180px;">Go to Catalog</a>
       </div>
     `;
     return;
@@ -44,6 +44,9 @@ async function loadProduct() {
   try {
     const product = await api(`/api/products/${encodeURIComponent(productId)}`);
     activeProduct = product;
+    if (typeof RecentlyViewed !== 'undefined') {
+      RecentlyViewed.add(product._id);
+    }
     document.title = `${product.name} | ApexStore`;
     renderProductPage(product);
   } catch (err) {
@@ -52,7 +55,7 @@ async function loadProduct() {
       <div style="background: white; padding: 48px; border-radius: 4px; text-align: center;">
         <h2 style="font-size: 20px; font-weight: 700; color: var(--danger); margin-bottom: 8px;">Product Not Found</h2>
         <p style="color: var(--text-muted); margin-bottom: 16px;">${escapeHTML(err.message)}</p>
-        <a href="index.html" class="btn-add-cart" style="display: inline-block; max-width: 180px;">Back to Catalog</a>
+        <a href="products.html" class="btn-add-cart" style="display: inline-block; max-width: 180px;">Back to Catalog</a>
       </div>
     `;
   }
@@ -72,7 +75,7 @@ function renderProductPage(product) {
     <!-- Breadcrumbs -->
     <nav class="breadcrumb-nav" aria-label="Breadcrumbs">
       <a href="index.html">Home</a> &gt;
-      <a href="index.html?category=${encodeURIComponent(product.category)}">${escapeHTML(product.category)}</a> &gt;
+      <a href="products.html?category=${encodeURIComponent(product.category)}">${escapeHTML(product.category)}</a> &gt;
       <span style="color: var(--text-main); font-weight: 600;">${escapeHTML(product.brand)}</span>
     </nav>
 

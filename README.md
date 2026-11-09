@@ -54,30 +54,34 @@ Hosted on a free tier, the first load may take up to a minute.
 ### Storefront and Navigation
 - **Top Utility Bar**: Free delivery on orders above ₹499, Cash on Delivery available, 24x7 support.
 - **Sticky Marketplace Header**:
-  - ApexStore brand with Explore *Plus* badge.
-  - Search bar with Category dropdown, search button, and **live autocomplete suggestions dropdown** as you type.
+  - ApexStore brand with Explore *Plus* badge (links to Home).
+  - Search bar with Category dropdown, search button, and live autocomplete suggestions routing to `products.html?search=...`.
   - User Account menu with dropdown (My Orders, Logout, Sign In).
   - Cart link with real-time item counter badge.
-- **Category Strip**: Quick-access navigation strip for Electronics, Fashion, Home & Kitchen, and Sports & Fitness.
-- **Hero Carousel**: 3 promotional banners, automatic 5-second rotation, pause on hover, navigation arrows, and dot indicators.
+- **Category Strip**: Navigation strip with active state tracking across Home, All Categories, Electronics, Fashion, Home & Kitchen, and Sports & Fitness.
+- **Hero Carousel**: 3 promotional banners, automatic 5-second rotation, pause on hover, navigation arrows, and dot indicators linking to active categories.
 - **Category Visual Tiles**: 4 quick-jump cards featuring curated photography and discount highlights.
-- **Today's Top Deals**: Horizontal scroll row featuring items with deep discounts (`xx% OFF`).
-- **Dense Product Cards**:
-  - Pure white background, `object-fit: contain` images.
-  - Wishlist heart icon (toggles red and persists in `localStorage`).
-  - Brand name, 2-line truncated title.
-  - Green rating pill (e.g. `4.3 ★`) with review count.
-  - Bold selling price, strikethrough original MRP, and green discount percentage.
-  - "Free delivery" text, low-stock warning (`Only 3 left` when stock < 5), or out-of-stock badge.
-  - Add to Cart button (hover on desktop, always visible on mobile).
-- **Sidebar Filters and Controls**:
-  - Category multi-checkboxes.
-  - Numeric price range filter (Min & Max with Apply button).
-  - Customer rating filters (`4★ & above`, `3★ & above`).
-  - In-stock only toggle switch.
-  - Sort dropdown: Relevance, Price: Low to High, Price: High to Low, Customer Rating, Newest Arrivals.
-  - Mobile slide-in filter drawer.
-  - Pagination controls (`Prev`, page numbers, `Next`).
+- **Quick Links Navigation Strip**: Pill-based jump links under hero for Today's Deals, Under ₹499, Under ₹999, 4.5★ & Above, Premium Picks, and New Arrivals.
+- **Deal of the Day**: Auto-sliding row of top-discounted products with live countdown timer to midnight local time and low-stock warning indicators ("Only N left").
+- **Budget Picks (Under ₹999)**: Auto-sliding row of verified quality everyday essentials.
+- **Shop by Category Blocks**: 4 multi-product 2x2 grid blocks (Electronics, Fashion, Home & Kitchen, Sports & Fitness) with direct links and category CTAs.
+- **Top Rated Products (4.4★+)**: Auto-sliding row of highest customer-rated items.
+- **Premium Collection (₹4,999+)**: Auto-sliding row of flagship tech and luxury essentials.
+- **New Arrivals & Best Sellers**: Auto-sliding rows sorted by newest additions and customer review volume.
+- **Auto-Sliding Sliders**: All product rows smoothly auto-slide one card every 3.5 seconds with seamless looping, pause on hover/focus/touch, tab visibility pause, and respect for `prefers-reduced-motion`.
+- **Recently Viewed**: Persistent history tracked in `localStorage` across visited product pages with one-click clear history.
+- **Dual Promo Banners**: Budget Store ("Under ₹999") and Flagship Gear ("Top Rated 4.5★") with brand color gradients and product previews.
+- **Featured Brands**: Authentic brands with real product count badges, linking to brand-filtered catalog listings.
+
+### Dedicated Catalog Listing (products.html)
+- Multi-field search and query synchronization.
+- Category filters (multi-checkboxes).
+- Numeric price range filter (Min & Max with Apply button).
+- Customer rating filters (`4★ & above`, `3★ & above`).
+- In-stock only toggle switch.
+- Sort dropdown: Relevance, Highest Discount %, Customer Rating, Best Sellers, Price: Low to High, Price: High to Low, Newest Arrivals.
+- Mobile slide-in filter drawer with touch overlay.
+- Dynamic pagination controls (`Prev`, page numbers, `Next`).
 
 ### Product Details (product.html)
 - Breadcrumbs (`Home > Category > Product`).
@@ -170,10 +174,11 @@ EcommerceStore/
 │   └── auth.js             # JWT verification middleware
 ├── routes/
 │   ├── auth.js             # Register & login routes
-│   ├── products.js         # Products catalog (sorting, filters, pagination, related products)
+│   ├── products.js         # Products catalog & home aggregator (sorting, filters, pagination, related)
 │   └── orders.js           # Order placement (atomic stock deduction & rollback) & order history
 └── public/                 # Static frontend served by Express
-    ├── index.html          # Marketplace catalog home
+    ├── index.html          # Marketplace landing home (hero, deals, 2x2 blocks, curated rows)
+    ├── products.html       # Full catalog listing with sidebar filters, sort & pagination
     ├── product.html        # Product details, gallery & pincode checker
     ├── cart.html           # Shopping cart & saved for later
     ├── checkout.html       # 3-step checkout & COD placement
@@ -183,9 +188,10 @@ EcommerceStore/
     ├── css/
     │   └── style.css       # Marketplace CSS design system
     ├── js/
-    │   ├── common.js       # SVG icon library, Wishlist, Cart manager, Toasts, Autocomplete, Header/Footer
-    │   ├── index.js        # Carousel, top deals, catalog filtering, sort & pagination
-    │   ├── product.js      # Gallery zoom, pincode estimator, tabs, Buy Now
+    │   ├── common.js       # Shared card renderer, Wishlist, Cart manager, RecentlyViewed, Nav
+    │   ├── index.js        # Home page controller (carousel, countdown, rows, 2x2 blocks)
+    │   ├── products.js     # Catalog controller (filters, URL query sync, sort, pagination)
+    │   ├── product.js      # Gallery zoom, pincode estimator, tabs, Buy Now, recently viewed recorder
     │   ├── cart.js         # Cart items stepper, save for later, delivery fees
     │   ├── checkout.js     # Step progress, form validation, order submission
     │   ├── auth.js         # Shared login/register, password toggle, safe redirection
@@ -204,7 +210,8 @@ EcommerceStore/
 | :--- | :--- | :---: | :--- |
 | `POST` | `/api/auth/register` | No | Register new user. Returns JWT token & user object. |
 | `POST` | `/api/auth/login` | No | Login user. Returns JWT token & user object. |
-| `GET` | `/api/products` | No | Query params: `search`, `category`, `sort`, `minPrice`, `maxPrice`, `minRating`, `inStock`, `page`, `limit`. Returns `{ products, total, page, pages }`. |
+| `GET` | `/api/products/home` | No | Aggregated home payload: `{ deals, budgetPicks, premiumPicks, topRated, newArrivals, bestSellers, categoryBlocks, brands }` (cached 60s). |
+| `GET` | `/api/products` | No | Query params: `search`, `brand`, `category`, `sort` (`relevance`, `discount`, `rating`, `reviewCount`, `newest`, `price-low-high`, `price-high-low`), `minPrice`, `maxPrice`, `minRating`, `inStock`, `ids`, `page`, `limit`. Returns `{ products, total, page, pages }`. |
 | `GET` | `/api/products/:id` | No | Get single product by ID. Returns product with `relatedProducts`. |
 | `POST` | `/api/orders` | **Yes** | Place a new order with atomic stock reduction & automatic rollback. |
 | `GET` | `/api/orders/my` | **Yes** | Retrieve all orders placed by authenticated user (newest first). |
